@@ -31,19 +31,25 @@ const CONFIG = {
 ## 改完网站怎么上线（GitHub Pages，源为 `gh-pages` 分支）
 
 `gh-pages` 分支里只有网站文件（`index.html` / `README.md` / `rebuild-preview.sh`）。
-更新网站后：
+
+⚠️ 不要在工作区里 `git checkout --orphan gh-pages` + `git rm -rf .`：那会连
+`.gitignore` 一起删掉，紧接着的 `git add -A` 会把 `node_modules/`、`data/`、
+开发包等一并提交进分支（已踩过这个坑）。正确做法——在**独立的临时目录**里重建：
 
 ```bash
-git add website/index.html
+# 1) 正常提交网站改动到 main 并推送
+git add website/index.html website/README.md
 git commit -m "site: ..."
-# 重建 gh-pages 分支（只含网站文件）并推送：
-git checkout --orphan gh-pages
-git rm -rf --quiet .
-cp website/index.html website/README.md website/rebuild-preview.sh .
-git add -A
-git commit -m "site: update"
-git push origin gh-pages
-git checkout main
+git push origin main
+
+# 2) 在隔离的临时目录重建 gh-pages（只含网站文件）并推送
+rm -rf /tmp/ghpages && mkdir -p /tmp/ghpages
+cp website/index.html website/README.md website/rebuild-preview.sh /tmp/ghpages/
+cd /tmp/ghpages && git init -q && git add -A
+git -c user.name="JkL-06" -c user.email="ljkcka666@163.com" commit -q -m "site: update"
+git remote add origin https://github.com/JkL-06/minilab.git
+git push origin HEAD:refs/heads/gh-pages
+cd ..
 ```
 
 推完后 GitHub Pages 会在约 1 分钟内重新构建，线上地址不变。
