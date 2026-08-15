@@ -18,7 +18,14 @@ export function openDatabase(filename: string): MiniLabDb {
   if (filename !== ':memory:') {
     mkdirSync(dirname(filename), { recursive: true });
   }
-  const db = new Database(filename);
+  // 打包成桌面版（pkg）时，bin/minilab.js 会把嵌入的 .node 原生绑定
+  // require() 出来存进 __minilabSqliteAddon，用它绕开 `bindings` 包的
+  // fs 探测（pkg 资产对 fs 不可见）。开发/普通运行没有该全局变量，走默认路径。
+  const addon = (globalThis as { __minilabSqliteAddon?: unknown }).__minilabSqliteAddon;
+  const db =
+    addon != null
+      ? new Database(filename, { nativeBinding: addon as unknown as string })
+      : new Database(filename);
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
   migrate(db);

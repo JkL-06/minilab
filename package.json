@@ -23,7 +23,7 @@
     "test": "npm run build && node --test dist/tests/",
     "demo": "npm run build && node scripts/demo.mjs",
     "prepublishOnly": "npm run build && npm test",
-    "build:exe": "npm run build && pkg bin/minilab.js --output dist-exe/MiniLab.exe"
+    "build:exe": "npm run build && pkg . --output dist-exe/MiniLab.exe"
   },
   "engines": {
     "node": ">=20"

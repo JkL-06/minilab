@@ -121,6 +121,9 @@ git clone https://github.com/JkL-06/minilab
 cd minilab && npm install && npm start
 ```
 
+> 💡 下载的桌面版 exe 若被 Windows SmartScreen 拦下（未签名软件的常规提示）：
+> 右键 `MiniLab.exe` → **属性 → 解除锁定**，或点「更多信息 → 仍要运行」即可。
+
 - **npm 包**：`minilab@0.1.0` — https://www.npmjs.com/package/minilab
 - **许可证**：MIT（见仓库根目录 [`LICENSE`](LICENSE)）
 - **完整中文使用教程**：见 [`docs/USAGE.md`](docs/USAGE.md)

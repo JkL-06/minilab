@@ -53,6 +53,30 @@ if (has('--data-path')) process.env.DATABASE_PATH = value('--data-path', process
 // 打包成桌面版（pkg）时，启动后自动打开浏览器进 PI 仪表盘。
 if (process.pkg) process.env.MINILAB_OPEN_BROWSER = '1';
 
+// 打包版：better-sqlite3 的原生绑定（.node）作为资产嵌在包内，但 pkg 的资产
+// 只对 require() 可见、对 fs.existsSync 不可见——better-sqlite3 依赖的 `bindings`
+// 包用 fs 逐路径探测，在快照里必然失败（“Could not locate the bindings file”）。
+// 这里直接用 require() 加载嵌入的 addon 对象，存进全局变量交给 DB 层，
+// DB 层通过 better-sqlite3 官方 nativeBinding 选项接收，彻底绕开 bindings。
+if (process.pkg) {
+  const addonCandidates = [
+    path.join(__dirname, '..', 'node_modules', 'better-sqlite3', 'build', 'Release', 'better_sqlite3.node'),
+    path.join(__dirname, '..', 'node_modules', 'better-sqlite3', 'build', 'better_sqlite3.node'),
+  ];
+  for (const candidate of addonCandidates) {
+    try {
+      globalThis.__minilabSqliteAddon = require(candidate);
+      break;
+    } catch (e) {
+      // MODULE_NOT_FOUND = 该候选路径没有资产，换下一个；
+      // 其它错误（如 dlopen 失败）是真实失败，停止尝试。
+      if (!e || (e.code !== 'MODULE_NOT_FOUND' && !/not find/i.test(String(e.message)))) {
+        break;
+      }
+    }
+  }
+}
+
 // server.ts reads process.env.PORT / DATABASE_PATH at import time.
 // 注意：必须用字面量相对路径（pkg 静态分析只追踪字面量 require），
 // 动态 path.join 会在打包时被漏掉导致 server.js 不进包。

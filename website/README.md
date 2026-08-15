@@ -71,11 +71,20 @@ npx serve .        # → http://localhost:5000
 ## 其他发布渠道
 
 - **Windows 桌面版 (exe)**：用 `@yao-pkg/pkg@6.0.0` 把 Node 20 运行时 + 服务器 + better-sqlite3
-  原生模块打成单个 `MiniLab.exe`（约 58 MB），上传为 GitHub Release 资产。命令 `npm run build:exe`。
-  关键点：`bin/minilab.js` 的 require 必须用**字面量路径**（pkg 静态分析只追踪字面量）；
-  better-sqlite3 的 `.node` 绑定通过 package.json `pkg.assets` 打入；打包版启动后
-  `MINILAB_OPEN_BROWSER=1` 自动开浏览器。发新版：`npm run build:exe` → 建 Release 标签 → 上传资产
-  → 更新本文件与 `index.html` 的 `CONFIG.exeUrl`。
+  原生模块打成单个 `MiniLab.exe`（约 59 MB），上传为 GitHub Release 资产。命令 `npm run build:exe`。
+  关键点：
+  - ⚠️ 构建必须 `pkg .`（**目录入口**）而不能 `pkg bin/minilab.js`——`package.json` 里的
+    `pkg.assets` 只在入口是 package.json/目录时才被读取，JS 入口会静默丢掉资产（已踩坑）。
+  - `bin/minilab.js` 的 require 必须用**字面量路径**（pkg 静态分析只追踪字面量）。
+  - better-sqlite3 的 `.node` 绑定经 `pkg.assets` 打入（存在 blob 存储，`fs` 看不见但
+    `require()` 能加载）。打包版里 `bin/minilab.js` 用 `require(资产路径)` 取出 addon 对象放进
+    `globalThis.__minilabSqliteAddon`，DB 层通过 better-sqlite3 官方 `nativeBinding` 选项接收——
+    彻底绕开 `bindings` 包的 fs 探测（否则必报 "Could not locate the bindings file"）。
+  - 打包版启动后 `MINILAB_OPEN_BROWSER=1` 自动开浏览器。
+  - 首次下载的 exe 会被 SmartScreen 拦下（未签名）：网站 exe 标签已注明「属性 → 解除锁定」或
+    「更多信息 → 仍要运行」。
+  - 发新版：`npm run build:exe` → 建 Release 标签 → 上传资产（同名替换：先删旧资产再传）
+    → 更新本文件与 `index.html` 的 `CONFIG.exeUrl` 与尺寸文案。
 - **Cloudflare Pages / Netlify**：拖拽上传整个 `website/` 目录即得 HTTPS 域名，与 GitHub Pages 可并存。
 - **npm 分发（已上线）**：`minilab@0.1.0` 已发布到 npm，任何机器装好 Node.js 20+ 后运行
   `npx minilab` 即可启动。发布流程：`npm publish`（`prepublishOnly` 会自动先构建 + 跑 353 项测试）。
