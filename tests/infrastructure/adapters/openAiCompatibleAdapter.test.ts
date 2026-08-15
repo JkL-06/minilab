@@ -58,7 +58,7 @@ const request: ModelRequest = { messages: [{ role: 'user', content: 'hi' }] };
 test('a 200 response is normalized into the ModelResponse shape (SPEC-005 #2)', async () => {
   const server = await stub(() => ({ status: 200, body: okBody() }));
   try {
-    const adapter = new OpenAICompatibleAdapter();
+    const adapter = new OpenAICompatibleAdapter(30_000);
     const response = await adapter.complete(request, { model: 'gpt-4o-mini', baseUrl: server.baseUrl, apiKey: null });
 
     assert.equal(response.content, 'Hello from the stub');
@@ -77,7 +77,7 @@ test('finish_reason is mapped, with unknown values falling back to unknown', asy
     body: okBody({ choices: [{ message: { content: 'x' }, finish_reason: 'tool_calls' }] }),
   }));
   try {
-    const adapter = new OpenAICompatibleAdapter();
+    const adapter = new OpenAICompatibleAdapter(30_000);
     assert.equal((await adapter.complete(request, { model: 'm', baseUrl: server.baseUrl, apiKey: null })).finishReason, 'tool_calls');
   } finally {
     await server.close();
@@ -88,7 +88,7 @@ test('finish_reason is mapped, with unknown values falling back to unknown', asy
     body: okBody({ choices: [{ message: { content: 'x' }, finish_reason: 'weird' }] }),
   }));
   try {
-    const adapter = new OpenAICompatibleAdapter();
+    const adapter = new OpenAICompatibleAdapter(30_000);
     assert.equal((await adapter.complete(request, { model: 'm', baseUrl: unknown.baseUrl, apiKey: null })).finishReason, 'unknown');
   } finally {
     await unknown.close();
@@ -102,7 +102,7 @@ test('the adapter sends the Bearer credential only when configured', async () =>
     return { status: 200, body: okBody() };
   });
   try {
-    const adapter = new OpenAICompatibleAdapter();
+    const adapter = new OpenAICompatibleAdapter(30_000);
     await adapter.complete(request, { model: 'm', baseUrl: server.baseUrl, apiKey: 'sk-secret' });
     assert.equal(seenAuth, 'Bearer sk-secret');
     await adapter.complete(request, { model: 'm', baseUrl: server.baseUrl, apiKey: null });
@@ -119,7 +119,7 @@ test('the adapter forwards the model and messages to /chat/completions', async (
     return { status: 200, body: okBody() };
   });
   try {
-    const adapter = new OpenAICompatibleAdapter();
+    const adapter = new OpenAICompatibleAdapter(30_000);
     await adapter.complete(request, { model: 'gpt-4o', baseUrl: server.baseUrl, apiKey: null });
     assert.equal(seen!.url, '/v1/chat/completions');
     assert.equal(seen!.body.model, 'gpt-4o');
@@ -142,7 +142,7 @@ test('provider status codes map to normalized categories (SPEC-005 #4)', async (
   for (const [status, category] of cases) {
     const server = await stub(() => ({ status }));
     try {
-      const adapter = new OpenAICompatibleAdapter();
+      const adapter = new OpenAICompatibleAdapter(30_000);
       await assert.rejects(
         adapter.complete(request, { model: 'm', baseUrl: server.baseUrl, apiKey: 'sk' }),
         (err: unknown) => err instanceof ModelGatewayError && err.category === category,
@@ -157,7 +157,7 @@ test('provider status codes map to normalized categories (SPEC-005 #4)', async (
 test('malformed provider responses map to invalid_response', async () => {
   const server = await stub(() => ({ status: 200, body: { choices: [] } })); // no message.content
   try {
-    const adapter = new OpenAICompatibleAdapter();
+    const adapter = new OpenAICompatibleAdapter(30_000);
     await assert.rejects(
       adapter.complete(request, { model: 'm', baseUrl: server.baseUrl, apiKey: null }),
       (err: unknown) => err instanceof ModelGatewayError && err.category === 'invalid_response',
@@ -174,7 +174,7 @@ test('an unreachable provider maps to connection_failed', async () => {
   await close();
   const deadUrl = `http://127.0.0.1:${port}/v1`;
 
-  const adapter = new OpenAICompatibleAdapter();
+  const adapter = new OpenAICompatibleAdapter(30_000);
   await assert.rejects(
     adapter.complete(request, { model: 'm', baseUrl: deadUrl, apiKey: null }),
     (err: unknown) => err instanceof ModelGatewayError && err.category === 'connection_failed',
