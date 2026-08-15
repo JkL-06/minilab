@@ -1,0 +1,850 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MiniLab · 下载与安装 | 你的持久化 AI 科研实验室</title>
+<meta name="description" content="MiniLab 是一个开源、自托管的持久化 AI 科研实验室。下载即用：雇佣持久的 AI 研究员、用任务与记忆推进研究、打开网页即是 PI 仪表盘。本地 SQLite 存储，重启不丢，无需外网即可完整试用。">
+<style>
+  :root {
+    --bg: #0b1120;
+    --bg-soft: #0e1628;
+    --panel: #121d34;
+    --panel-2: #17223c;
+    --border: #24324f;
+    --border-soft: #1b2740;
+    --text: #e9eefb;
+    --muted: #9aa9c8;
+    --faint: #6b7a9a;
+    --accent: #5f8bff;
+    --accent-2: #8f6bff;
+    --accent-soft: rgba(95, 139, 255, .14);
+    --ok: #3ecf8e;
+    --warn: #ffb454;
+    --danger: #ff6b81;
+    --radius: 14px;
+    --font: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif;
+    --mono: ui-monospace, "Cascadia Code", "JetBrains Mono", "SFMono-Regular", Consolas, "Courier New", monospace;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: rgba(95,139,255,.35); }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+  /* ---------- Nav ---------- */
+  nav {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(11,17,32,.82);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .nav-inner {
+    display: flex; align-items: center; gap: 20px;
+    max-width: 1120px; margin: 0 auto; padding: 14px 24px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; color: var(--text); }
+  .brand:hover { text-decoration: none; }
+  .brand-mark {
+    width: 30px; height: 30px; border-radius: 9px;
+    display: grid; place-items: center; font-size: 17px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    box-shadow: 0 4px 18px rgba(95,139,255,.35);
+  }
+  .nav-links { display: flex; gap: 22px; margin-left: 8px; }
+  .nav-links a { color: var(--muted); font-size: 14.5px; }
+  .nav-links a:hover { color: var(--text); }
+  .nav-cta { margin-left: auto; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 18px; border-radius: 10px;
+    font-weight: 600; font-size: 14.5px; cursor: pointer; border: none;
+    transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+  }
+  .btn:hover { text-decoration: none; transform: translateY(-1px); }
+  .btn-primary {
+    color: #fff;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    box-shadow: 0 6px 22px rgba(95,139,255,.35);
+  }
+  .btn-primary:hover { box-shadow: 0 8px 28px rgba(95,139,255,.5); }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ---------- Hero ---------- */
+  .hero { padding: 88px 0 72px; position: relative; overflow: hidden; }
+  .hero::before {
+    content: ""; position: absolute; inset: -30% -20% auto;
+    height: 620px; z-index: -1;
+    background:
+      radial-gradient(600px 300px at 20% 0%, rgba(95,139,255,.16), transparent 60%),
+      radial-gradient(700px 340px at 85% 10%, rgba(143,107,255,.13), transparent 60%);
+  }
+  .hero-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 56px; align-items: center; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px; border-radius: 999px;
+    font-size: 12.5px; color: var(--accent);
+    background: var(--accent-soft); border: 1px solid rgba(95,139,255,.3);
+    margin-bottom: 20px;
+  }
+  .badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+  h1 {
+    margin: 0 0 18px; font-size: clamp(34px, 4.6vw, 50px);
+    line-height: 1.15; letter-spacing: -0.5px;
+  }
+  h1 .grad {
+    background: linear-gradient(120deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero-sub { color: var(--muted); font-size: 17px; max-width: 560px; margin: 0 0 30px; }
+  .hero-sub b { color: var(--text); font-weight: 600; }
+  .hero-ctas { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 34px; }
+
+  /* ---------- Terminal ---------- */
+  .terminal {
+    background: #0a0f1d; border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: 0 24px 60px rgba(0,0,0,.45);
+    overflow: hidden; font-family: var(--mono); font-size: 13.5px;
+  }
+  .term-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 16px; background: var(--panel); border-bottom: 1px solid var(--border-soft);
+  }
+  .term-dot { width: 11px; height: 11px; border-radius: 50%; }
+  .term-dot:nth-child(1) { background: #ff5f57; }
+  .term-dot:nth-child(2) { background: #febc2e; }
+  .term-dot:nth-child(3) { background: #28c840; }
+  .term-bar .title { margin-left: 8px; color: var(--faint); font-size: 12px; font-family: var(--font); }
+  .term-copy { margin-left: auto; }
+  .term-body { padding: 18px 20px; }
+  .term-line { display: flex; gap: 12px; padding: 3px 0; white-space: pre-wrap; word-break: break-all; }
+  .term-line .p { color: var(--accent); }
+  .term-line .c { color: var(--muted); }
+  .term-line .out { color: var(--ok); }
+  .term-line .dim { color: var(--faint); }
+  .copy-btn {
+    background: transparent; border: 1px solid var(--border); color: var(--muted);
+    padding: 4px 10px; border-radius: 7px; font-size: 12px; cursor: pointer;
+    transition: all .12s ease;
+  }
+  .copy-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .copy-btn.done { color: var(--ok); border-color: var(--ok); }
+
+  /* ---------- Sections ---------- */
+  section { padding: 72px 0; }
+  .sec-eyebrow { color: var(--accent); font-size: 13px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; }
+  .sec-title { font-size: clamp(26px, 3vw, 34px); margin: 10px 0 14px; line-height: 1.25; }
+  .sec-sub { color: var(--muted); max-width: 640px; margin: 0 auto 44px; text-align: center; }
+  .center { text-align: center; }
+  .section-pad { border-top: 1px solid var(--border-soft); }
+
+  /* ---------- Features ---------- */
+  .feat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
+  .feat {
+    background: var(--panel); border: 1px solid var(--border-soft); border-radius: var(--radius);
+    padding: 24px; transition: border-color .15s ease, transform .15s ease;
+  }
+  .feat:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .feat-icon {
+    width: 42px; height: 42px; border-radius: 11px; display: grid; place-items: center;
+    font-size: 20px; background: var(--accent-soft); margin-bottom: 16px;
+  }
+  .feat h3 { margin: 0 0 8px; font-size: 17px; }
+  .feat p { margin: 0; color: var(--muted); font-size: 14.5px; }
+  .feat .spec { display: inline-block; margin-top: 12px; font-size: 11.5px; color: var(--faint);
+    font-family: var(--mono); border: 1px solid var(--border); padding: 2px 8px; border-radius: 6px; }
+
+  /* ---------- Dashboard mock ---------- */
+  .mock {
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+    overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,.4);
+    font-size: 13px;
+  }
+  .mock-bar { display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-bottom: 1px solid var(--border-soft); background: #0e1628; }
+  .mock-bar .url {
+    flex: 1; display: flex; align-items: center; gap: 8px;
+    background: var(--bg); border: 1px solid var(--border-soft); border-radius: 7px;
+    padding: 5px 12px; color: var(--muted); font-family: var(--mono); font-size: 12px;
+  }
+  .mock-body { padding: 20px 22px; display: grid; gap: 16px; }
+  .mock-head { display: flex; align-items: center; gap: 10px; }
+  .mock-head h4 { margin: 0; font-size: 16px; }
+  .mock-head .who { margin-left: auto; color: var(--faint); font-size: 12px; }
+  .mock-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .mock-col { display: grid; gap: 12px; align-content: start; }
+  .mock-sec h5 { margin: 0 0 10px; font-size: 12.5px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .mock-sec h5 .cnt { margin-left: auto; color: var(--accent); font-family: var(--mono); }
+  .mock-card { background: var(--panel-2); border: 1px solid var(--border-soft); border-radius: 10px; padding: 12px 14px; }
+  .mock-card .row { display: flex; gap: 8px; align-items: center; margin: 2px 0; }
+  .mock-card .lbl { color: var(--faint); font-size: 12px; }
+  .mock-card .val { color: var(--text); }
+  .pill { font-size: 11px; padding: 2px 9px; border-radius: 999px; font-weight: 600; }
+  .pill.blocked { color: var(--warn); background: rgba(255,180,84,.13); }
+  .pill.running { color: var(--accent); background: var(--accent-soft); }
+  .pill.agent { color: var(--ok); background: rgba(62,207,142,.12); border: 1px solid rgba(62,207,142,.35); }
+  .q { border-left: 3px solid var(--warn); padding-left: 10px; }
+  .mock-foot { padding: 12px 22px; border-top: 1px solid var(--border-soft); color: var(--faint); font-size: 12px; display: flex; gap: 18px; }
+
+  /* ---------- Install steps ---------- */
+  .steps { display: grid; gap: 16px; max-width: 760px; margin: 0 auto; }
+  .step { display: grid; grid-template-columns: 44px 1fr; gap: 16px; align-items: start; }
+  .step-num {
+    width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center;
+    font-weight: 700; font-size: 18px; color: var(--accent);
+    background: var(--accent-soft); border: 1px solid rgba(95,139,255,.3);
+  }
+  .step h3 { margin: 4px 0 6px; font-size: 17px; }
+  .step p { margin: 0 0 10px; color: var(--muted); font-size: 14.5px; }
+  .cmd {
+    background: #0a0f1d; border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 16px; font-family: var(--mono); font-size: 13.5px;
+    display: flex; align-items: center; gap: 12px; overflow-x: auto; white-space: pre;
+  }
+  .cmd code { color: var(--text); flex: 1; }
+  .cmd .copy-btn { flex-shrink: 0; }
+
+  .tabs { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 30px; }
+  .tab {
+    padding: 8px 16px; border-radius: 999px; border: 1px solid var(--border);
+    background: transparent; color: var(--muted); font-size: 13.5px; cursor: pointer;
+    font-family: var(--font); transition: all .12s ease;
+  }
+  .tab.active { color: #fff; background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-color: transparent; }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  /* ---------- Requirements ---------- */
+  .req-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+  .req { background: var(--panel); border: 1px solid var(--border-soft); border-radius: 12px; padding: 18px 20px; }
+  .req .k { color: var(--faint); font-size: 12.5px; margin-bottom: 6px; }
+  .req .v { font-size: 15px; }
+  .req .v.ok { color: var(--ok); }
+  .req .v.muted { color: var(--muted); }
+
+  /* ---------- FAQ ---------- */
+  .faq { max-width: 760px; margin: 0 auto; display: grid; gap: 12px; }
+  details {
+    background: var(--panel); border: 1px solid var(--border-soft); border-radius: 12px;
+    padding: 18px 22px;
+  }
+  details summary { cursor: pointer; font-weight: 600; font-size: 15.5px; list-style: none; display: flex; align-items: center; gap: 10px; }
+  details summary::before { content: "＋"; color: var(--accent); font-weight: 700; }
+  details[open] summary::before { content: "－"; }
+  details p { color: var(--muted); font-size: 14.5px; margin: 12px 0 0; }
+  details code { font-family: var(--mono); background: rgba(255,255,255,.06); padding: 1px 6px; border-radius: 5px; font-size: 13px; }
+
+  /* ---------- Footer ---------- */
+  footer { border-top: 1px solid var(--border-soft); padding: 44px 0 56px; }
+  .foot-inner { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; color: var(--faint); font-size: 13.5px; }
+  .foot-inner .spacer { margin-left: auto; display: flex; gap: 18px; }
+  .foot-inner a { color: var(--faint); }
+  .foot-inner a:hover { color: var(--accent); }
+
+  /* ---------- Toast ---------- */
+  #toast {
+    position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 20px);
+    background: #111d36; border: 1px solid var(--border); color: var(--text);
+    padding: 10px 20px; border-radius: 10px; font-size: 14px;
+    opacity: 0; pointer-events: none; transition: opacity .2s ease, transform .2s ease;
+    box-shadow: 0 10px 30px rgba(0,0,0,.4); z-index: 100;
+  }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); }
+  #toast .ok { color: var(--ok); }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 880px) {
+    .hero { padding: 56px 0 48px; }
+    .hero-grid { grid-template-columns: 1fr; gap: 36px; }
+    .nav-links { display: none; }
+    .mock-cols { grid-template-columns: 1fr; }
+    section { padding: 52px 0; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a class="brand" href="#top"><span class="brand-mark">🧪</span> MiniLab</a>
+    <div class="nav-links">
+      <a href="#features">特性</a>
+      <a href="#dashboard">界面</a>
+      <a href="#install">安装</a>
+      <a href="#requirements">系统要求</a>
+      <a href="#faq">FAQ</a>
+    </div>
+    <a class="btn btn-primary nav-cta" href="#install" data-cta="download">⬇ 下载 MiniLab</a>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="badge"><span class="dot"></span> v0.2.1 · 已发布 Windows 桌面版 · npm · 下载网站 · 383 项测试通过</span>
+      <h1>你的<a class="grad">持久化 AI 科研实验室</a></h1>
+      <p class="hero-sub">
+        MiniLab 是一个开源、自托管的 AI 科研实验室。雇佣持久的 AI 研究员
+        （如 <b>Alice</b>），用 <b>任务 · 记忆 · 产物 · 组会</b> 推进真实研究，
+        打开网页即是 <b>PI 仪表盘</b>。数据存本地 SQLite，重启不丢；
+        无需外网、无需真实 API Key 也能<b>完整试用</b>。
+      </p>
+      <div class="hero-ctas">
+        <a class="btn btn-primary" id="exe-download" href="#install">⬇ 下载 Windows 桌面版 (exe)</a>
+        <a class="btn btn-ghost" href="#install">⚡ 一行命令安装</a>
+      </div>
+      <div class="terminal">
+        <div class="term-bar">
+          <span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span>
+          <span class="title">terminal — minilab</span>
+          <button class="copy-btn term-copy" data-copy="install-cmd">复制</button>
+        </div>
+        <div class="term-body">
+          <div class="term-line"><span class="p">$</span><span class="c" id="install-cmd">npx minilab</span></div>
+          <div class="term-line"><span class="out">✔ 正在下载 minilab@0.2.1 · 无需手动安装</span></div>
+          <div class="term-line"><span class="out">➜ MiniLab 已启动：http://localhost:3000</span></div>
+          <div class="term-line dim">打开浏览器即进入 PI 仪表盘 🏛</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock" aria-hidden="true">
+      <div class="mock-bar">
+        <span class="url">🏛 http://localhost:3000/labs/…/dashboard</span>
+        <span class="pill agent">PI 视图</span>
+      </div>
+      <div class="mock-body">
+        <div class="mock-head">
+          <h4>🧪 Cognitive Lab · 实验室总览</h4>
+          <span class="who">PI 身份 · 无需对话</span>
+        </div>
+        <div class="mock-cols">
+          <div class="mock-col">
+            <div class="mock-sec">
+              <h5>📋 进行中的项目 <span class="cnt">2</span></h5>
+              <div class="mock-card">
+                <div class="row"><span class="lbl">元分析优先级调查</span><span class="pill running">analyze</span></div>
+                <div class="row"><span class="lbl">工作记忆综述</span><span class="pill running">survey</span></div>
+              </div>
+            </div>
+            <div class="mock-sec">
+              <h5>🧠 实验室成员 <span class="cnt">2</span></h5>
+              <div class="mock-card">
+                <div class="row"><span class="pill agent">Alice</span><span class="val">phd_researcher · 工作记忆</span></div>
+                <div class="row"><span class="pill agent">Bob</span><span class="val">literature_reviewer · 文献</span></div>
+              </div>
+            </div>
+            <div class="mock-sec">
+              <h5>⏳ 需要关注的任务 <span class="cnt">1</span></h5>
+              <div class="mock-card">
+                <div class="row"><span class="pill blocked">blocked</span><span class="val">元分析优先级检索</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="mock-col">
+            <div class="mock-sec">
+              <h5>🙋 等待你决策的问题 <span class="cnt">1</span></h5>
+              <div class="mock-card q">
+                <div class="row"><span class="val">是否优先整合 2024 年后的元分析？</span></div>
+                <div class="row"><span class="lbl">来自 Alice · 任务 #12</span></div>
+              </div>
+            </div>
+            <div class="mock-sec">
+              <h5>📄 最近产物 <span class="cnt">3</span></h5>
+              <div class="mock-card">
+                <div class="row"><span class="val">优先级建议表</span><span class="lbl">v1 · 元分析优先级调查</span></div>
+                <div class="row"><span class="val">综述初稿</span><span class="lbl">v2 · 工作记忆综述</span></div>
+              </div>
+            </div>
+            <div class="mock-sec">
+              <h5>🤝 组会与决策 <span class="cnt">2</span></h5>
+              <div class="mock-card">
+                <div class="row"><span class="val">先做调查再综述</span><span class="lbl">最近决策</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="mock-foot">
+          <span>✅ 仪表盘 = 数据库实时视图 · 不经过任何模型调用</span>
+          <span>Agent 身份持久，与临时聊天参与者区分</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section id="features" class="section-pad">
+  <div class="wrap">
+    <p class="sec-eyebrow center">FEATURES</p>
+    <h2 class="sec-title center">一个实验室，十份规格，全部交付</h2>
+    <p class="sec-sub">按规格驱动逐条实现：Lab 核心 → 持久 Agent → 项目与任务 → 模型网关 → 运行时 → 记忆 → 产物 → 组会 → PI 仪表盘。每一项都有自动化测试与可运行演示。</p>
+    <div class="feat-grid">
+      <div class="feat">
+        <div class="feat-icon">🧠</div>
+        <h3>持久身份 Agent</h3>
+        <p>雇佣 Alice / Bob，Agent 归属唯一 Lab、密钥不进数据行，身份在进程重启后依然是你实验室的成员。</p>
+        <span class="spec">SPEC-002 · Agent Core</span>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">📋</div>
+        <h3>项目与任务</h3>
+        <p>项目带研究阶段与状态；任务沿受约束状态机推进，非法迁移被拒，分派给指定 Agent。</p>
+        <span class="spec">SPEC-003/004</span>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">🔌</div>
+        <h3>模型网关</h3>
+        <p>统一 OpenAI 兼容 / mock 接口；密钥 AES-256-GCM 加密存储，绝不回显。错误分类返回。</p>
+        <span class="spec">SPEC-005 · Model Gateway</span>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">⚙️</div>
+        <h3>Agent Runtime</h3>
+        <p>一次有界执行：结构化输出先校验再落盘，原始模型文本永远不能改变实验室状态。</p>
+        <span class="spec">SPEC-006 · Agent Runtime</span>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">🧾</div>
+        <h3>作用域记忆</h3>
+        <p>给 Agent / 项目 / 实验室写记忆，带溯源与重要性；记忆按作用域隔离，Alice 的私密记忆到不了 Bob。</p>
+        <span class="spec">SPEC-007 · Memory</span>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">📦</div>
+        <h3>版本化产物</h3>
+        <p>成功运行把产物提案实体化为 Artifact，PI 可修订产生新版本，版本血缘可追溯。</p>
+        <span class="spec">SPEC-008 · Artifacts</span>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">🤝</div>
+        <h3>组会与决策</h3>
+        <p>组会确定性组装成员进展，PI 记录决策、拆出行动项并自动生成后续任务与记忆。</p>
+        <span class="spec">SPEC-009 · Meeting</span>
+      </div>
+      <div class="feat">
+        <div class="feat-icon">📊</div>
+        <h3>PI 仪表盘</h3>
+        <p>打开即见实验室全貌：项目、成员、待办、等待你的问题、最近产物与决策。纯数据库视图，零模型调用。</p>
+        <span class="spec">SPEC-010 · Dashboard</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="dashboard" class="section-pad">
+  <div class="wrap">
+    <p class="sec-eyebrow center">DEFAULT UI</p>
+    <h2 class="sec-title center">打开网页，就是你的 PI 仪表盘</h2>
+    <p class="sec-sub">默认界面不要求「先打字提问」。一进系统就知道实验室正在发生什么：谁在干活、谁卡住了、有哪些问题在等你拍板。</p>
+    <div class="mock">
+      <div class="mock-bar">
+        <span class="url">🏛 http://localhost:3000/ → 302 → 你的 Lab 仪表盘</span>
+        <span class="pill agent">实时</span>
+      </div>
+      <div class="mock-body">
+        <div class="mock-head">
+          <h4>🧪 Cognitive Lab · 实验室总览</h4>
+          <span class="who">登录身份：PI · 无需对话</span>
+        </div>
+        <div class="mock-cols">
+          <div class="mock-col">
+            <div class="mock-sec">
+              <h5>📋 进行中的项目 <span class="cnt">2</span></h5>
+              <div class="mock-card">
+                <div class="row"><span class="val">元分析优先级调查</span><span class="pill running">analyze · 进行中</span></div>
+                <div class="row"><span class="val">工作记忆综述</span><span class="pill running">survey · 进行中</span></div>
+              </div>
+            </div>
+            <div class="mock-sec">
+              <h5>🧠 实验室成员（持久身份） <span class="cnt">2</span></h5>
+              <div class="mock-card">
+                <div class="row"><span class="pill agent">Alice</span><span class="val">phd_researcher · 专精工作记忆 · 1 个任务</span></div>
+                <div class="row"><span class="pill agent">Bob</span><span class="val">literature_reviewer · 专精文献 · 空闲</span></div>
+              </div>
+            </div>
+            <div class="mock-sec">
+              <h5>⏳ 需要关注的任务 <span class="cnt">1</span></h5>
+              <div class="mock-card">
+                <div class="row"><span class="pill blocked">blocked</span><span class="val">元分析优先级检索</span></div>
+                <div class="row"><span class="lbl">负责人：Alice · 项目：元分析优先级调查</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="mock-col">
+            <div class="mock-sec">
+              <h5>🙋 等待你决策的问题 <span class="cnt">1</span></h5>
+              <div class="mock-card q">
+                <div class="row"><span class="val">是否优先整合 2024 年后的元分析？</span></div>
+                <div class="row"><span class="lbl">来自 Alice · 运行 #21 · 任务 #12</span></div>
+              </div>
+            </div>
+            <div class="mock-sec">
+              <h5>📄 最近产物 <span class="cnt">3</span></h5>
+              <div class="mock-card">
+                <div class="row"><span class="val">优先级建议表</span><span class="lbl">v1 · 元分析优先级调查</span></div>
+                <div class="row"><span class="val">综述初稿</span><span class="lbl">v2 · 工作记忆综述</span></div>
+                <div class="row"><span class="val">证据图谱</span><span class="lbl">v1 · 工作记忆综述</span></div>
+              </div>
+            </div>
+            <div class="mock-sec">
+              <h5>🤝 组会与最近决策 <span class="cnt">2</span></h5>
+              <div class="mock-card">
+                <div class="row"><span class="val">先做优先级调查，再写综述</span><span class="lbl">组会决策 · PI</span></div>
+                <div class="row"><span class="val">分组并行，两周内合并</span><span class="lbl">组会决策 · PI</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="mock-foot">
+          <span>✅ 纯数据库视图 · 确定性 · 零模型调用</span>
+          <span>Agent 以「持久实验室成员」呈现，区别于临时聊天参与者</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="install" class="section-pad">
+  <div class="wrap">
+    <p class="sec-eyebrow center">GET STARTED</p>
+    <h2 class="sec-title center">3 分钟跑起来</h2>
+    <p class="sec-sub">最简单：<b>下载 Windows 桌面版，双击即用，连 Node.js 都不用装</b>。想用命令行的朋友也可以选其他方式。</p>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="tab-exe">🖥 Windows 桌面版</button>
+      <button class="tab" data-tab="tab-npx">⚡ npx 一行命令</button>
+      <button class="tab" data-tab="tab-clone">从源码安装</button>
+      <button class="tab" data-tab="tab-zip">下载 ZIP</button>
+      <button class="tab" data-tab="tab-windows">Windows 一键</button>
+    </div>
+
+    <div class="steps">
+      <div class="tab-pane active" id="tab-exe">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div>
+            <h3>下载 Windows 桌面版</h3>
+            <p>单文件、免安装：已内置 Node.js 运行时与 SQLite，无需任何依赖，支持 Windows 10 / 11。</p>
+            <a class="btn btn-primary" id="exe-download-tab" href="#install">⬇ 下载 MiniLab.exe (v0.2.1 · 约 59 MB)</a>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div>
+            <h3>双击 MiniLab.exe</h3>
+            <p>首次运行自动初始化数据库，然后 <b>自动打开浏览器</b> 进入 PI 仪表盘（自动创建一个起始 Lab「我的实验室」，无需任何输入）。</p>
+            <p>💡 <b>刚下载的 exe 被 Windows 拦下？</b> 由于暂未做代码签名，SmartScreen 可能提示「已保护你的电脑」。点 <b>更多信息 → 仍要运行</b>；或右键 <code>MiniLab.exe</code> → <b>属性 → 解除锁定</b>，再双击即可。文件本身安全（MIT 开源，源码见仓库）。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div>
+            <h3>想改端口？用命令行参数</h3>
+            <div class="cmd"><code data-copy="cmd-exe-port">MiniLab.exe --port 8080</code><button class="copy-btn" data-copy="cmd-exe-port">复制</button></div>
+            <p>数据默认存在 exe 同目录的 <code>data/minilab.db</code>，重启不丢。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-pane" id="tab-npx">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div>
+            <h3>运行一条命令</h3>
+            <p>无需克隆、无需手动装依赖——npm 会自动下载最新版并启动 MiniLab。</p>
+            <div class="cmd"><code data-copy="cmd-npx">npx minilab</code><button class="copy-btn" data-copy="cmd-npx">复制</button></div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div>
+            <h3>打开 PI 仪表盘</h3>
+            <p>浏览器访问 <code>http://localhost:3000</code>，自动进入 PI 仪表盘（首次启动自动创建起始 Lab「我的实验室」）。API 客户端需携带 <code>X-User-Id</code> 头。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">★</div>
+          <div>
+            <h3>想长期用？装成全局命令</h3>
+            <p>运行一次 <code>npm install -g minilab</code>，之后直接输入 <code>minilab</code> 启动。详见 <a href="https://www.npmjs.com/package/minilab" target="_blank" rel="noopener">npm 页面</a>。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-pane" id="tab-clone">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div>
+            <h3>克隆仓库</h3>
+            <p>把 MiniLab 代码下载到本地（需要先装好 <a href="https://git-scm.com/" target="_blank" rel="noopener">Git</a>）。</p>
+            <div class="cmd"><code data-copy="cmd-clone">git clone https://github.com/你的用户名/minilab minilab</code><button class="copy-btn" data-copy="cmd-clone">复制</button></div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div>
+            <h3>安装依赖并启动</h3>
+            <div class="cmd"><code data-copy="cmd-start">cd minilab &amp;&amp; npm install &amp;&amp; npm start</code><button class="copy-btn" data-copy="cmd-start">复制</button></div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div>
+            <h3>打开 PI 仪表盘</h3>
+            <p>浏览器访问 <code>http://localhost:3000</code>，自动进入 PI 仪表盘（首次启动自动创建起始 Lab「我的实验室」）。API 客户端需携带 <code>X-User-Id</code> 头。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">★</div>
+          <div>
+            <h3>先看全功能演示（可选）</h3>
+            <div class="cmd"><code data-copy="cmd-demo">cd minilab &amp;&amp; npm install &amp;&amp; npm run demo</code><button class="copy-btn" data-copy="cmd-demo">复制</button></div>
+            <p>跑一遍覆盖全部 10 份规格的端到端演示，验证你的环境没问题。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-pane" id="tab-zip">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div>
+            <h3>下载 ZIP 压缩包</h3>
+            <p>点击下方按钮，下载 MiniLab 源码压缩包。</p>
+            <a class="btn btn-primary" href="#install" data-cta="download" id="zip-download">⬇ 下载 MiniLab (v0.2.1)</a>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div>
+            <h3>解压并安装</h3>
+            <div class="cmd"><code data-copy="cmd-unzip">cd minilab &amp;&amp; npm install &amp;&amp; npm start</code><button class="copy-btn" data-copy="cmd-unzip">复制</button></div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div>
+            <h3>打开 <code>http://localhost:3000</code></h3>
+            <p>Windows 用户也可以直接双击解压目录里的 <code>start.bat</code>。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-pane" id="tab-windows">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div>
+            <h3>安装 Node.js 20+</h3>
+            <p>从 <a href="https://nodejs.org/" target="_blank" rel="noopener">nodejs.org</a> 下载安装，全程下一步即可。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div>
+            <h3>下载并解压 MiniLab</h3>
+            <p>点击下载 ZIP，解压到任意目录。</p>
+            <a class="btn btn-primary" href="#install" data-cta="download" id="zip-download-win">⬇ 下载 MiniLab (v0.2.1)</a>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div>
+            <h3>双击 <code>start.bat</code></h3>
+            <p>首次运行会自动 <code>npm install</code>，随后启动服务并打印地址。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div>
+            <h3>打开 <code>http://localhost:3000</code></h3>
+            <p>想验证环境？双击 <code>test.bat</code> 跑全部 356 项测试。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="requirements" class="section-pad">
+  <div class="wrap">
+    <p class="sec-eyebrow center">REQUIREMENTS</p>
+    <h2 class="sec-title center">系统要求</h2>
+    <div class="req-grid">
+      <div class="req"><div class="k">桌面版</div><div class="v ok">免装 Node.js · 双击即用</div></div>
+      <div class="req"><div class="k">运行环境 (源码/npm)</div><div class="v">Node.js ≥ 20</div></div>
+      <div class="req"><div class="k">操作系统</div><div class="v">Windows 桌面版 · 任意平台源码/npm</div></div>
+      <div class="req"><div class="k">数据库</div><div class="v muted">内置 SQLite · 无需额外安装</div></div>
+      <div class="req"><div class="k">网络</div><div class="v muted">mock 模式全程离线；接真实模型时才需联网</div></div>
+      <div class="req"><div class="k">API Key</div><div class="v muted">不需要 · 零配置可跑</div></div>
+      <div class="req"><div class="k">数据持久化</div><div class="v muted">本地 data/minilab.db，重启不丢</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="faq" class="section-pad">
+  <div class="wrap">
+    <p class="sec-eyebrow center">FAQ</p>
+    <h2 class="sec-title center">常见问题</h2>
+    <div class="faq">
+      <details>
+        <summary>需要 AI API Key 吗？</summary>
+        <p>不需要。MiniLab 内置 <code>mock</code> 模型提供商，全程离线即可完整试用并跑通全部演示。想接入真实模型时，只需在实验室里配置一个 OpenAI 兼容端点。</p>
+      </details>
+      <details>
+        <summary>数据会丢吗？</summary>
+        <p>所有数据都存本地 <code>data/minilab.db</code>（SQLite），进程重启、关机都不会丢。删除该文件即清空实验室，随时可重来。</p>
+      </details>
+      <details>
+        <summary>能在服务器上跑，给多人用吗？</summary>
+        <p>可以。MiniLab 是标准 HTTP 服务，部署到任意 Node.js 主机即可；当前身份认证为 <code>X-User-Id</code> 占位实现，正式鉴权将在后续版本提供。</p>
+      </details>
+      <details>
+        <summary>目前实现到哪一版规格？</summary>
+        <p>SPEC-001～SPEC-010 全部交付，共 356 项自动化测试通过，含一份覆盖全部规格的端到端演示。规格驱动的开发仍在继续，下一个版本会在新规格就绪后发布。</p>
+      </details>
+      <details>
+        <summary>Windows 桌面版、<code>npx</code>、源码版有什么区别？</summary>
+        <p>跑的都是同一份 MiniLab，只是获取方式不同。<b>桌面版 (exe)</b> 内置了 Node.js 运行时和 SQLite，下载后双击即用，适合不想装任何环境的用户；<code>npx minilab</code> 适合已装好 Node.js 的用户；下载源码适合自己改代码、二次开发。</p>
+      </details>
+      <details>
+        <summary><code>npx minilab</code> 和下载源码有什么区别？</summary>
+        <p>跑的是同一份 MiniLab。区别只在获取方式：<code>npx minilab</code> 让 npm 自动下载并运行最新版，免去克隆和手动装依赖，最适合快速试用；下载源码则方便自己改代码、二次开发。</p>
+      </details>
+      <details>
+        <summary>怎么升级到最新版？</summary>
+        <p><code>npx minilab</code> 每次都会运行最新版，无需操作；如果全局安装过，运行 <code>npm install -g minilab@latest</code> 即可升级。</p>
+      </details>
+      <details>
+        <summary>怎么报告问题或参与开发？</summary>
+        <p>欢迎在仓库的 Issues 里提反馈，或在 Discussions 交流。详情见仓库内 <code>docs/USAGE.md</code> 与 <code>README.md</code>。</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot-inner">
+    <span>🧪 MiniLab · 自托管开源 AI 科研实验室 · <span id="foot-version">v0.2.1</span></span>
+    <span class="spacer">
+      <a href="#features">特性</a>
+      <a href="#install">安装</a>
+      <a href="#faq">FAQ</a>
+      <a href="docs/USAGE.md" target="_blank" rel="noopener">使用教程</a>
+    </span>
+  </div>
+</footer>
+
+<div id="toast"><span class="ok">✔</span> 已复制到剪贴板</div>
+
+<script>
+/* ============================================================
+ * 站点配置
+ *   repoUrl : 托管 MiniLab 源码的公开仓库地址
+ *   zipUrl  : 直接下载源码 ZIP 的地址（main 分支 codeload 直链）
+ *   npmUrl  : MiniLab 在 npm 上的页面（npx minilab 即安装它）
+ *   exeUrl  : Windows 桌面版下载地址（GitHub Release 资产直链）
+ * ============================================================ */
+const CONFIG = {
+  version: 'v0.2.1',
+  repoUrl: 'https://github.com/JkL-06/minilab',
+  zipUrl: 'https://github.com/JkL-06/minilab/archive/refs/heads/main.zip',
+  npmUrl: 'https://www.npmjs.com/package/minilab',
+  exeUrl: 'https://github.com/JkL-06/minilab/releases/download/v0.2.1/MiniLab.exe',
+};
+
+/* ---- 把配置写进页面 ---- */
+(function wireConfig() {
+  /* 命令目标可能是 id（hero 终端）或 data-copy（各 .cmd 块），统一兜底查找 */
+  function setCmd(key, text) {
+    var el = document.getElementById(key) || document.querySelector('[data-copy="' + key + '"]');
+    if (el) el.textContent = text;
+  }
+  const clone = CONFIG.repoUrl + ' minilab';
+  const installCmd = 'cd minilab && npm install && npm start';
+  setCmd('install-cmd', 'npx minilab');
+  setCmd('cmd-npx', 'npx minilab');
+  setCmd('cmd-clone', 'git clone ' + clone);
+  setCmd('cmd-start', installCmd);
+  setCmd('cmd-demo', 'cd minilab && npm install && npm run demo');
+  setCmd('cmd-unzip', installCmd);
+  document.getElementById('foot-version').textContent = CONFIG.version;
+
+  const target = CONFIG.zipUrl || CONFIG.repoUrl;
+  document.querySelectorAll('[data-cta="download"]').forEach(function (el) {
+    el.setAttribute('href', target);
+    el.setAttribute('target', '_blank');
+    el.setAttribute('rel', 'noopener');
+  });
+
+  /* Windows 桌面版按钮 → exe 下载直链 */
+  var exeEls = document.querySelectorAll('#exe-download, #exe-download-tab');
+  for (var i = 0; i < exeEls.length; i++) {
+    exeEls[i].setAttribute('href', CONFIG.exeUrl);
+    exeEls[i].setAttribute('target', '_blank');
+    exeEls[i].setAttribute('rel', 'noopener');
+  }
+})();
+
+/* ---- 复制按钮 ---- */
+function copyText(text, btn) {
+  function ok() {
+    var old = btn.textContent;
+    btn.textContent = '已复制';
+    btn.classList.add('done');
+    var toast = document.getElementById('toast');
+    toast.classList.add('show');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () {
+      toast.classList.remove('show');
+      btn.textContent = old;
+      btn.classList.remove('done');
+    }, 1400);
+  }
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(ok).catch(function () { fallback(text, btn, ok); });
+  } else {
+    fallback(text, btn, ok);
+  }
+}
+function fallback(text, btn, ok) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); ok(); } catch (e) { btn.textContent = '复制失败'; }
+  document.body.removeChild(ta);
+}
+document.addEventListener('click', function (e) {
+  var btn = e.target.closest('[data-copy]');
+  if (!btn) return;
+  var key = btn.getAttribute('data-copy');
+  /* 优先按 id 找目标（hero 终端的命令行），否则按 data-copy 找第一个匹配
+     （各 .cmd 块里的 <code> 在按钮之前，文档序更靠前）。 */
+  var el = document.getElementById(key) || document.querySelector('[data-copy="' + key + '"]');
+  if (!el || el === btn) return;
+  copyText(el.textContent, btn);
+});
+
+/* ---- 安装方式 Tab ---- */
+document.querySelectorAll('.tab').forEach(function (tab) {
+  tab.addEventListener('click', function () {
+    document.querySelectorAll('.tab').forEach(function (t) { t.classList.remove('active'); });
+    document.querySelectorAll('.tab-pane').forEach(function (p) { p.classList.remove('active'); });
+    tab.classList.add('active');
+    document.getElementById(tab.getAttribute('data-tab')).classList.add('active');
+  });
+});
+</script>
+</body>
+</html>
