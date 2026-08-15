@@ -93,6 +93,38 @@ All state persists across application restarts.
 > 📖 **完整中文使用教程见 [`docs/USAGE.md`](docs/USAGE.md)**（安装、启动、接口、
 > 持久化、测试、FAQ 全覆盖）。
 
+## 获取与安装（Download & Install）
+
+MiniLab 已正式对外发布，三种方式任选：
+
+| 方式 | 说明 | 链接 / 命令 |
+| ---- | ---- | ----------- |
+| **npm 一行命令** ⭐ | 无需克隆、无需手动装依赖，npm 自动下载并运行最新版 | `npx minilab` |
+| **下载网站** | 官方落地页：浏览特性、选安装方式、下载 ZIP | https://jkl-06.github.io/minilab/ |
+| **源码仓库** | 公开源码 + MIT 许可证，可自行修改、二次开发 | https://github.com/JkL-06/minilab |
+
+```bash
+# 最快方式：一行命令启动（先装好 Node.js 20+）
+npx minilab
+# → 打开 http://localhost:3000
+
+# 想长期用：装成全局命令，之后直接输入 minilab 启动
+npm install -g minilab
+minilab
+
+# 从源码跑（本仓库）
+git clone https://github.com/JkL-06/minilab
+cd minilab && npm install && npm start
+```
+
+- **npm 包**：`minilab@0.1.0` — https://www.npmjs.com/package/minilab
+- **许可证**：MIT（见仓库根目录 [`LICENSE`](LICENSE)）
+- **完整中文使用教程**：见 [`docs/USAGE.md`](docs/USAGE.md)
+
+> ⚠️ 发布 `minilab` 到 npm 需要账号开启 2FA，并用带 **Bypass 2FA** 权限的
+> Granular Access Token（Package access = **All packages**、Permissions = **Read and write**），
+> 否则 `npm publish` 返回 403。完整步骤与教训见 [`website/README.md`](website/README.md)。
+
 ## Quickstart
 
 ```bash
@@ -143,8 +175,10 @@ tests/
   infrastructure/    migration idempotency + persistence across reopen + adapter/cipher tests
   api/               HTTP contract tests (supertest)
   e2e/               acceptance tests: create → restart → retrieve
+bin/                npm CLI entry (`bin/minilab.js`) — what `npx minilab` runs
 website/            download/install landing page (static, self-contained `index.html`),
-                     Chinese, hosting guide in `website/README.md`
+                     Chinese, hosting guide in `website/README.md`; `minilab` npm package
+                     is published from this repo (see "获取与安装")
 ```
 
 ## Run
