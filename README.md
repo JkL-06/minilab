@@ -123,6 +123,11 @@ cd minilab && npm install && npm start
 
 > 💡 下载的桌面版 exe 若被 Windows SmartScreen 拦下（未签名软件的常规提示）：
 > 右键 `MiniLab.exe` → **属性 → 解除锁定**，或点「更多信息 → 仍要运行」即可。
+>
+> 💡 桌面版双击启动后会**自动打开浏览器进入 PI 仪表盘**（首次启动自动创建一个起始
+> Lab「我的实验室」，无需任何输入即可看到实验室当前状态）。它面向单机本地使用，浏览器
+> 访问以本地用户身份放行；API 调用仍需携带 `X-User-Id` 头，`npx minilab` 与源码运行
+> 方式的行为不变。
 
 - **npm 包**：`minilab@0.1.0` — https://www.npmjs.com/package/minilab
 - **许可证**：MIT（见仓库根目录 [`LICENSE`](LICENSE)）

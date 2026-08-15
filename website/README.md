@@ -80,14 +80,20 @@ npx serve .        # → http://localhost:5000
     `require()` 能加载）。打包版里 `bin/minilab.js` 用 `require(资产路径)` 取出 addon 对象放进
     `globalThis.__minilabSqliteAddon`，DB 层通过 better-sqlite3 官方 `nativeBinding` 选项接收——
     彻底绕开 `bindings` 包的 fs 探测（否则必报 "Could not locate the bindings file"）。
-  - 打包版启动后 `MINILAB_OPEN_BROWSER=1` 自动开浏览器。
+  - 打包版启动后 `MINILAB_OPEN_BROWSER=1` 自动开浏览器进 PI 仪表盘。
+  - **浏览器回退**：`bin/minilab.js` 设 `MINILAB_DESKTOP=1`（源码启动也默认开启，
+    见 `src/server.ts`），`src/api/auth.ts` 的 `desktopBrowserFallback` 挂在 app 最顶层，
+    让「Accept 显式含 text/html、无 x-user-id 头的普通浏览器」以本地单机用户 `local-pi`
+    访问（首次启动自动创建起始 Lab「我的实验室」），兑现「打开网页即是 PI 仪表盘」。
+    curl 默认 `*/*`、API/JSON 客户端不受影响，依旧必须携带 x-user-id（SPEC-001 契约
+    不变，Lab 归属校验原样生效）。
   - 首次下载的 exe 会被 SmartScreen 拦下（未签名）：网站 exe 标签已注明「属性 → 解除锁定」或
     「更多信息 → 仍要运行」。
   - 发新版：`npm run build:exe` → 建 Release 标签 → 上传资产（同名替换：先删旧资产再传）
     → 更新本文件与 `index.html` 的 `CONFIG.exeUrl` 与尺寸文案。
 - **Cloudflare Pages / Netlify**：拖拽上传整个 `website/` 目录即得 HTTPS 域名，与 GitHub Pages 可并存。
 - **npm 分发（已上线）**：`minilab@0.1.0` 已发布到 npm，任何机器装好 Node.js 20+ 后运行
-  `npx minilab` 即可启动。发布流程：`npm publish`（`prepublishOnly` 会自动先构建 + 跑 353 项测试）。
+  `npx minilab` 即可启动。发布流程：`npm publish`（`prepublishOnly` 会自动先构建 + 跑 356 项测试）。
   ⚠️ 发布前 npm 账号需开启 2FA，并生成 **Granular Access Token**：Package access = **All packages**、
   Permissions = **Read and write**、勾选 **Bypass 2FA**——否则 `npm publish` 返回 403。
 
@@ -95,4 +101,4 @@ npx serve .        # → http://localhost:5000
 
 - 开发包 `MiniLab-Development-Pack-v0.1/`、`data/`、`node_modules/`、`dist/`、`.claude/`、
   `*.key` 都在仓库 `.gitignore` 中，**不会**随公开仓库发布。
-- 网站文案里的测试数（353）、SPEC 编号、端口（3000）请随仓库实际状态更新。
+- 网站文案里的测试数（356）、SPEC 编号、端口（3000）请随仓库实际状态更新。

@@ -53,6 +53,13 @@ if (has('--data-path')) process.env.DATABASE_PATH = value('--data-path', process
 // 打包成桌面版（pkg）时，启动后自动打开浏览器进 PI 仪表盘。
 if (process.pkg) process.env.MINILAB_OPEN_BROWSER = '1';
 
+// 启动器模式标记（npx/minilab 与打包版 exe 都走本文件）：src/api/auth.ts 的
+// desktopBrowserFallback 据此对「纯浏览器访问（Accept 含 text/html、无
+// x-user-id 头）」放行，认作本地单机用户 local-pi，让「打开网页即是 PI 仪表盘」
+// 在产品启动方式下成立。直接 `node dist/src/server.js`（源码/开发）不设置，
+// SPEC-001 的 x-user-id 契约保持不变；curl/API 客户端也不会被误判。
+process.env.MINILAB_DESKTOP = '1';
+
 // 打包版：better-sqlite3 的原生绑定（.node）作为资产嵌在包内，但 pkg 的资产
 // 只对 require() 可见、对 fs.existsSync 不可见——better-sqlite3 依赖的 `bindings`
 // 包用 fs 逐路径探测，在快照里必然失败（“Could not locate the bindings file”）。

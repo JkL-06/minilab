@@ -36,6 +36,13 @@ export function dashboardRouter(
     handle((req, res) => {
       const labs = labService.listLabs(req.userId);
       if (labs.length === 0) {
+        // 桌面版首启：浏览器无法 POST 建 Lab，直接给本地用户建一个起始 Lab，
+        // 让「双击 exe → 打开即是 PI 仪表盘」（SPEC-010 default UI）成立。
+        if (process.env.MINILAB_DESKTOP === '1') {
+          const lab = labService.createLab(req.userId, '我的实验室');
+          res.redirect(`/labs/${lab.id}/dashboard`);
+          return;
+        }
         res.type('html').send(renderEmptyLabPage());
         return;
       }

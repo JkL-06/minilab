@@ -233,6 +233,51 @@ test('GET / shows a create-your-first-Lab page when the user has no Labs', async
   assert.match(res.text, /欢迎使用 MiniLab/);
 });
 
+test('desktop mode (MINILAB_DESKTOP=1): a plain browser can open the dashboard without x-user-id (exe auto-open fix)', async () => {
+  process.env.MINILAB_DESKTOP = '1';
+  try {
+    const { app } = testApp();
+    // 浏览器导航 GET / → 302 到自动创建的起始 Lab 的 dashboard（而非 401）
+    const root = await request(app).get('/').set('Accept', 'text/html');
+    assert.equal(root.status, 302);
+    const location = String(root.headers.location);
+    assert.match(location, /^\/labs\/.+\/dashboard$/);
+    // 浏览器随后请求 dashboard 页 → 200 HTML（而非 401 UNAUTHENTICATED）
+    const page = await request(app).get(location).set('Accept', 'text/html');
+    assert.equal(page.status, 200);
+    assert.match(String(page.headers['content-type']), /text\/html/);
+    assert.match(page.text, /我的实验室/);
+    assert.match(page.text, /PI Dashboard/);
+  } finally {
+    delete process.env.MINILAB_DESKTOP;
+  }
+});
+
+test('desktop mode: browser access still enforces Lab ownership (local-pi cannot see another Lab owner)', async () => {
+  process.env.MINILAB_DESKTOP = '1';
+  try {
+    const { app, mock } = testApp();
+    const world = await createWorld(app, mock);
+    const res = await request(app).get(`/labs/${world.labId}/dashboard`).set('Accept', 'text/html');
+    assert.equal(res.status, 403);
+  } finally {
+    delete process.env.MINILAB_DESKTOP;
+  }
+});
+
+test('desktop mode still rejects unauthenticated JSON/API clients (SPEC-001 contract intact)', async () => {
+  process.env.MINILAB_DESKTOP = '1';
+  try {
+    const { app, mock } = testApp();
+    const world = await createWorld(app, mock);
+    // JSON 客户端没有 x-user-id → 依旧 401，不受浏览器回退影响
+    const res = await request(app).get(`/labs/${world.labId}/dashboard`).set('Accept', 'application/json');
+    assert.equal(res.status, 401);
+  } finally {
+    delete process.env.MINILAB_DESKTOP;
+  }
+});
+
 test('dashboard routes enforce auth and Lab ownership', async () => {
   const { app, mock } = testApp();
   const world = await createWorld(app, mock);

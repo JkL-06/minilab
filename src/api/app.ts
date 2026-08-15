@@ -11,6 +11,7 @@ import type { ModelConfigService } from '../application/modelConfigService';
 import type { ModelGateway } from '../application/modelGateway';
 import type { ProjectService } from '../application/projectService';
 import type { TaskService } from '../application/taskService';
+import { desktopBrowserFallback } from './auth';
 import { agentRunRouter } from './agentRunRoutes';
 import { agentRouter } from './agentRoutes';
 import { artifactRouter } from './artifactRoutes';
@@ -56,6 +57,10 @@ export function createApp({
 }: ApiDeps): express.Express {
   const app = express();
   app.use(express.json());
+  // 桌面版浏览器回退必须在所有路由之前：它只负责给「普通浏览器（Accept:
+  // text/html，无 x-user-id）」请求填上本地用户头，之后每个路由的 requireUser
+  // 才能通过。npm/源码模式下该中间件是空操作。
+  app.use(desktopBrowserFallback);
   app.use(labRouter(labService));
   app.use(agentRouter(agentService));
   app.use(projectRouter(projectService));

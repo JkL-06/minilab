@@ -30,6 +30,12 @@ import { getOrCreateCredentialCipher } from './infrastructure/models/credentialC
 const port = Number(process.env.PORT ?? 3000);
 const databasePath = process.env.DATABASE_PATH ?? './data/minilab.db';
 
+// 产品承诺「打开网页即是 PI 仪表盘」：默认允许普通浏览器（Accept 含 text/html、
+// 无 x-user-id 头）以本地单机用户 local-pi 访问 dashboard（见 src/api/auth.ts 的
+// desktopBrowserFallback），可显式设 MINILAB_DESKTOP=0 关闭。API/JSON 客户端不受
+// 影响，依旧必须携带 x-user-id（SPEC-001 契约不变）。
+if (process.env.MINILAB_DESKTOP !== '0') process.env.MINILAB_DESKTOP = '1';
+
 const db = openDatabase(databasePath);
 const labRepository = new SqliteLabRepository(db);
 const agentRepository = new SqliteAgentRepository(db);
