@@ -18,6 +18,9 @@ export function inMemoryTaskRepository(): TaskRepository & { tasks: Task[] } {
     findByProject(projectId: string): Task[] {
       return tasks.filter((task) => task.projectId === projectId);
     },
+    findByAssignee(agentId: string): Task[] {
+      return tasks.filter((task) => task.assigneeAgentId === agentId);
+    },
     update(task: Task): void {
       const index = tasks.findIndex((existing) => existing.id === task.id);
       if (index === -1) {

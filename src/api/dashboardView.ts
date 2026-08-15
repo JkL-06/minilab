@@ -23,7 +23,7 @@ export function escapeHtml(value: string | number | null | undefined): string {
     .replace(/'/g, '&#39;');
 }
 
-function stageLabel(stage: string): string {
+export function stageLabel(stage: string): string {
   const labels: Record<string, string> = {
     explore: '探索',
     survey: '综述',
@@ -38,7 +38,7 @@ function stageLabel(stage: string): string {
   return labels[stage] ?? stage;
 }
 
-function statusLabel(status: string): string {
+export function statusLabel(status: string): string {
   const labels: Record<string, string> = {
     planned: '计划中',
     active: '进行中',
@@ -57,7 +57,7 @@ function statusLabel(status: string): string {
   return labels[status] ?? status;
 }
 
-function priorityLabel(priority: string): string {
+export function priorityLabel(priority: string): string {
   const labels: Record<string, string> = {
     urgent: '紧急',
     high: '高',
@@ -67,13 +67,28 @@ function priorityLabel(priority: string): string {
   return labels[priority] ?? priority;
 }
 
-export function renderDashboardPage(dashboard: LabDashboard): string {
+export interface DashboardModelConfig {
+  id: string;
+  name: string;
+  model: string;
+  provider: string;
+  baseUrl: string | null;
+  apiKeyConfigured: boolean;
+}
+
+export function renderDashboardPage(
+  dashboard: LabDashboard,
+  extra?: { modelConfigs?: DashboardModelConfig[]; error?: string | null; notice?: string | null },
+): string {
   const { lab } = dashboard;
+  const modelConfigs = extra?.modelConfigs ?? [];
+  const error = extra?.error ?? null;
+  const notice = extra?.notice ?? null;
 
   const projectRows = dashboard.projects
     .map(
       (p) => `<tr>
-        <td>${escapeHtml(p.title)}</td>
+        <td><a href="/projects/${escapeHtml(p.id)}">${escapeHtml(p.title)}</a></td>
         <td>${stageLabel(p.stage)}</td>
         <td><span class="badge status-${escapeHtml(p.status)}">${statusLabel(p.status)}</span></td>
         <td>${escapeHtml(p.updatedAt.slice(0, 19).replace('T', ' '))}</td>
@@ -99,7 +114,7 @@ export function renderDashboardPage(dashboard: LabDashboard): string {
         <div class="agent-avatar" aria-hidden="true">${escapeHtml(agent.name.charAt(0))}</div>
         <div class="agent-body">
           <div class="agent-name">
-            ${escapeHtml(agent.name)}
+            <a href="/agents/${escapeHtml(agent.id)}">${escapeHtml(agent.name)}</a>
             <span class="badge status-${escapeHtml(agent.status)}">${statusLabel(agent.status)}</span>
           </div>
           <div class="muted">${escapeHtml(agent.role)}${agent.specialization ? ` · ${escapeHtml(agent.specialization)}` : ''} · 持久实验室成员（非临时对话参与者）</div>
@@ -171,6 +186,23 @@ export function renderDashboardPage(dashboard: LabDashboard): string {
             </li>`,
           )
           .join('');
+
+  const modelConfigOptions =
+    modelConfigs.length === 0
+      ? '<option value="">（还没有模型配置，请先连接模型）</option>'
+      : modelConfigs
+          .map((c) => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}（${escapeHtml(c.model)}）</option>`)
+          .join('');
+  const modelConfigList = modelConfigs
+    .map(
+      (c) => `<li><strong>${escapeHtml(c.name)}</strong><span class="muted"> · ${escapeHtml(c.provider)} · ${escapeHtml(c.model)}${c.baseUrl ? ` · ${escapeHtml(c.baseUrl)}` : ''}${c.apiKeyConfigured ? ' · 已配 Key' : ' · 未配 Key'}</span></li>`,
+    )
+    .join('');
+
+  const onboardingWarning =
+    dashboard.agents.length > 0 && modelConfigs.length === 0
+      ? '<p class="flash error">⚠ 成员还没有可用的模型配置 —— 先连接一个模型（用 mock 可零成本试玩），再指派给成员，否则任务无法执行。</p>'
+      : '';
 
   return `<!doctype html>
 <html lang="zh-CN">
@@ -258,6 +290,47 @@ export function renderDashboardPage(dashboard: LabDashboard): string {
   <p>PI Dashboard —— 打开即是实验室当前状态，无需任何输入（SPEC-010）</p>
 </header>
 <main>
+  ${error ? `<div class="flash error">⚠ ${escapeHtml(error)}</div>` : ''}
+  ${notice ? `<div class="flash ok">✓ ${escapeHtml(notice)}</div>` : ''}
+  ${onboardingWarning}
+
+  <section class="panel">
+    <h2>⚡ 快速操作</h2>
+    <details>
+      <summary>🤖 雇佣成员</summary>
+      <form class="field" method="post" action="/ui/labs/${escapeHtml(lab.id)}/agents">
+        <input type="hidden" name="_return" value="/labs/${escapeHtml(lab.id)}/dashboard" />
+        <label>姓名</label><input type="text" name="name" required maxlength="200" placeholder="例如：Alice" />
+        <label>角色</label><input type="text" name="role" maxlength="100" placeholder="例如：researcher（默认）" />
+        <label>专长</label><textarea name="specialization" maxlength="2000" placeholder="（可选）例如：NLP、因果推断…"></textarea>
+        <label>模型</label>
+        <select name="modelConfigId">${modelConfigOptions}</select>
+        <div class="actions"><button class="btn" type="submit">雇佣</button></div>
+      </form>
+    </details>
+    <details>
+      <summary>🔌 连接模型</summary>
+      <form class="field" method="post" action="/ui/labs/${escapeHtml(lab.id)}/model-configs">
+        <input type="hidden" name="_return" value="/labs/${escapeHtml(lab.id)}/dashboard" />
+        <label>配置名称</label><input type="text" name="name" required maxlength="100" placeholder="例如：OpenAI GPT-4o" />
+        <label>提供商</label>
+        <select name="provider">
+          <option value="openai_compatible">openai_compatible（OpenAI / Ollama / vLLM / DeepSeek 等）</option>
+          <option value="mock">mock（本地演示，无需网络）</option>
+        </select>
+        <label>模型</label><input type="text" name="model" required maxlength="200" placeholder="例如：gpt-4o-mini" />
+        <label>Base URL</label><input type="url" name="baseUrl" maxlength="500" placeholder="（可选）默认 https://api.openai.com/v1" />
+        <label>API Key</label><input type="password" name="apiKey" maxlength="2000" placeholder="（可选）加密存储，仅用于调用模型" />
+        <div class="actions"><button class="btn" type="submit">保存配置</button></div>
+      </form>
+    </details>
+  </section>
+
+  <section class="panel">
+    <h2>🔌 模型配置（${modelConfigs.length}）</h2>
+    ${modelConfigs.length === 0 ? '<p class="muted">还没连接模型。用上面的「连接模型」添加一个；用 mock 即可零成本试玩全流程。</p>' : `<ul>${modelConfigList}</ul>`}
+  </section>
+
   <section class="panel">
     <h2>📁 进行中的项目（${dashboard.projects.length}）</h2>
     ${dashboard.projects.length === 0 ? '<p class="muted">暂无进行中的项目。</p>' : `<table>

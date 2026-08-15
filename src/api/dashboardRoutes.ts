@@ -2,9 +2,10 @@ import { Router } from 'express';
 
 import type { DashboardService } from '../application/dashboardService';
 import type { LabService } from '../application/labService';
+import type { ModelConfigService } from '../application/modelConfigService';
 import { requireUser } from './auth';
 import { handle } from './handlers';
-import { renderDashboardPage } from './dashboardView';
+import { renderDashboardPage, type DashboardModelConfig } from './dashboardView';
 
 /**
  * SPEC-010 routes (ADR-0006 #3). The PI Dashboard is the default UI — it tells
@@ -26,6 +27,7 @@ import { renderDashboardPage } from './dashboardView';
 export function dashboardRouter(
   dashboardService: DashboardService,
   labService: LabService,
+  modelConfigService: ModelConfigService,
 ): Router {
   const router = Router();
 
@@ -53,9 +55,15 @@ export function dashboardRouter(
   router.get(
     '/labs/:labId/dashboard',
     handle((req, res) => {
-      const dashboard = dashboardService.getLabDashboard(req.userId, req.params.labId);
+      const labId = req.params.labId;
+      const dashboard = dashboardService.getLabDashboard(req.userId, labId);
       if (req.accepts(['html', 'json']) === 'html') {
-        res.type('html').send(renderDashboardPage(dashboard));
+        const modelConfigs: DashboardModelConfig[] = modelConfigService
+          .listModelConfigs(req.userId, labId)
+          .map((c) => modelConfigService.toView(c));
+        const error = typeof req.query.error === 'string' ? req.query.error : null;
+        const notice = typeof req.query.notice === 'string' ? req.query.notice : null;
+        res.type('html').send(renderDashboardPage(dashboard, { modelConfigs, error, notice }));
       } else {
         res.json({ dashboard });
       }

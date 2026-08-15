@@ -60,3 +60,58 @@ export function requireUser(req: Request, res: Response, next: NextFunction): vo
   req.userId = userId;
   next();
 }
+
+/**
+ * 桌面版跨站请求伪造（CSRF）防护。挂在 desktopBrowserFallback 之后、所有路由
+ * 之前，只作用于「启动器模式（MINILAB_DESKTOP=1）+ 状态变更方法 + 无 x-user-id
+ * 头」的请求——也就是会走浏览器回退、被当作本地用户 local-pi 的那类请求。
+ *
+ * 风险场景：本地桌面版绑定在 127.0.0.1 后，恶意网页仍可能用表单/脚本向
+ * `http://localhost:3000` 发跨站 POST，浏览器会自动带上 Accept: text/html 且
+ * 无法自定义 x-user-id 头，于是 fallback 会把它当成 local-pi 放行。本守卫用
+ * Origin/Referer 与请求 Host 比对，跨源一律 403，同源（用户自己打开的本地页面）
+ * 正常放行。GET 不在此列：跨站 GET 无法读取响应（无 CORS 头），无副作用。
+ */
+export function desktopCsrfGuard(req: Request, res: Response, next: NextFunction): void {
+  if (process.env.MINILAB_DESKTOP !== '1') {
+    next();
+    return;
+  }
+  const method = req.method.toUpperCase();
+  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    next();
+    return;
+  }
+  // 已携带 x-user-id 的请求走 SPEC-001 认证契约，不经过浏览器回退，无需守卫。
+  if (req.header(USER_ID_HEADER)) {
+    next();
+    return;
+  }
+  const host = req.headers.host;
+  const origin = req.header('origin');
+  if (origin) {
+    if (host && originHostOf(origin) !== host) {
+      res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Cross-site request rejected' } });
+      return;
+    }
+    next();
+    return;
+  }
+  const referer = req.header('referer');
+  if (referer) {
+    if (host && originHostOf(referer) !== host) {
+      res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Cross-site request rejected' } });
+      return;
+    }
+  }
+  next();
+}
+
+/** Extracts the `host[:port]` from an absolute URL; returns '' on malformed input. */
+function originHostOf(value: string): string {
+  try {
+    return new URL(value).host;
+  } catch {
+    return '';
+  }
+}

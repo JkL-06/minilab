@@ -78,6 +78,17 @@ and [SPEC-010 PI Dashboard](MiniLab-Development-Pack-v0.1/minilab-development-pa
   temporary chat participant, acceptance #4), Tasks needing attention (`blocked`/`review`),
   questions waiting for the PI (from the latest succeeded run of each non-terminal task),
   recent Artifacts, recent Decisions, and the Group Meeting entry point.
+- **Browser UI（产品化层，JSON API 之外）**: 打开浏览器即可完成**全部核心闭环**，无需 curl。
+  仪表盘新增「⚡ 快速操作」面板（一键雇佣成员 / 连接模型，连接模型支持
+  `mock` 零成本试玩与任意 openai_compatible 端点）与「🔌 模型配置」列表；项目 /
+  成员 / 组会都有独立的 HTML 详情页，带状态流转、执行、决策、行动项等表单操作；
+  `GET /labs/:labId/export` 一键导出整个 Lab 的 **Markdown 归档**（成员 / 项目 /
+  任务 / 产物 / 组会 / 决策 / 记忆），RFC 5987 正确处理中文文件名。所有页面
+  服务端渲染、零内联 JS、用户内容全部 HTML 转义；详情页只对 `Accept` 显式含
+  `text/html` 的请求返回 HTML，其余客户端原样落回 JSON API（契约不变）。
+- **本地安全硬化**: 服务默认只监听 `127.0.0.1`（`--host` / `HOST` 可放行到
+  局域网）；桌面版对走浏览器回退的状态变更请求做 **Origin/Referer 同源校验**
+  （跨站表单无法对 `localhost` 发起状态变更）；`GET /health` 提供版本与运行时长探活。
 
 All state persists across application restarts.
 
@@ -99,14 +110,14 @@ MiniLab 已正式对外发布，三种方式任选：
 
 | 方式 | 说明 | 链接 / 命令 |
 | ---- | ---- | ----------- |
-| **Windows 桌面版** ⭐ | 单文件、免装 Node.js，下载后双击即用 | https://github.com/JkL-06/minilab/releases/download/v0.1.0/MiniLab.exe |
+| **Windows 桌面版** ⭐ | 单文件、免装 Node.js，下载后双击即用 | https://github.com/JkL-06/minilab/releases/download/v0.2.0/MiniLab.exe |
 | **npm 一行命令** | 无需克隆、无需手动装依赖，npm 自动下载并运行最新版 | `npx minilab` |
 | **下载网站** | 官方落地页：浏览特性、选安装方式、下载 ZIP | https://jkl-06.github.io/minilab/ |
 | **源码仓库** | 公开源码 + MIT 许可证，可自行修改、二次开发 | https://github.com/JkL-06/minilab |
 
 ```bash
 # 最简单：Windows 用户直接下载桌面版（免装 Node.js，双击即用）
-#   https://github.com/JkL-06/minilab/releases/download/v0.1.0/MiniLab.exe
+#   https://github.com/JkL-06/minilab/releases/download/v0.2.0/MiniLab.exe
 
 # 其次：一行命令启动（先装好 Node.js 20+）
 npx minilab
@@ -129,7 +140,7 @@ cd minilab && npm install && npm start
 > 访问以本地用户身份放行；API 调用仍需携带 `X-User-Id` 头，`npx minilab` 与源码运行
 > 方式的行为不变。
 
-- **npm 包**：`minilab@0.1.0` — https://www.npmjs.com/package/minilab
+- **npm 包**：`minilab@0.2.0` — https://www.npmjs.com/package/minilab
 - **许可证**：MIT（见仓库根目录 [`LICENSE`](LICENSE)）
 - **完整中文使用教程**：见 [`docs/USAGE.md`](docs/USAGE.md)
 
@@ -179,7 +190,9 @@ src/
                      (mock / openai_compatible)
   infrastructure/memory/ semantic search (v0.1: deterministic offline KeywordMemorySearch)
   api/               Express routes (labs, agents, projects, tasks, model-configs, runs,
-                     memory, meetings), auth stub, error mapping, app factory
+                     memory, meetings), auth stub + desktop CSRF guard, error mapping,
+                     app factory; browser UI layer (dashboardView / uiView / uiRoutes /
+                     labExportView), served only to `text/html` clients
   server.ts          entry point
 tests/
   domain/            entity/validation unit tests
@@ -205,10 +218,14 @@ npm test             # build + run all tests (node:test)
 Configuration via environment:
 
 - `PORT` (default `3000`)
+- `HOST` (default `127.0.0.1` — 默认只监听本机；想局域网访问设 `HOST=0.0.0.0`
+  或启动时 `minilab --host 0.0.0.0`，并自行评估暴露面)
 - `DATABASE_PATH` (default `./data/minilab.db`)
 - `MODEL_GATEWAY_KEY` — 64-hex-char master key for credential encryption. When unset, a
   key file `<DATABASE_PATH>.key` is auto-generated next to the database so credentials stay
   decryptable across restarts with zero env plumbing.
+- `MINILAB_REQUEST_LOG=1` — 单行请求日志（方法 / 路径 / 状态码 / 耗时），供调试运维。
+- `MINILAB_DESKTOP=1`（`bin/minilab.js` 自动设置）— 启用桌面版浏览器回退 + CSRF 同源防护。
 
 ## API
 

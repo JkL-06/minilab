@@ -37,6 +37,7 @@ if (has('-h') || has('--help')) {
       '',
       'Options:',
       '  --port <n>        listen port  (default: 3000, or $PORT)',
+      '  --host <addr>     listen address (default: 127.0.0.1, or $HOST)',
       '  --data-path <p>   SQLite file  (default: ./data/minilab.db, or $DATABASE_PATH)',
       '  -h, --help        show this help',
       '  -v, --version     print version',
@@ -48,6 +49,7 @@ if (has('-h') || has('--help')) {
 }
 
 if (has('--port')) process.env.PORT = value('--port', process.env.PORT);
+if (has('--host')) process.env.HOST = value('--host', process.env.HOST);
 if (has('--data-path')) process.env.DATABASE_PATH = value('--data-path', process.env.DATABASE_PATH);
 
 // 打包成桌面版（pkg）时，启动后自动打开浏览器进 PI 仪表盘。

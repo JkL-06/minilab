@@ -28,6 +28,10 @@ import { MockProviderAdapter } from './infrastructure/models/adapters/mockProvid
 import { getOrCreateCredentialCipher } from './infrastructure/models/credentialCipher';
 
 const port = Number(process.env.PORT ?? 3000);
+// 默认只绑 127.0.0.1：本地单机工具不该被局域网里的其它设备访问（认证是无信任的
+// X-User-Id 头，绑定到所有网卡等于把 PI 的实验室数据暴露给邻居）。需要对外暴露
+// 时显式设 HOST=0.0.0.0（或 --host 0.0.0.0）。
+const host = process.env.HOST ?? '127.0.0.1';
 const databasePath = process.env.DATABASE_PATH ?? './data/minilab.db';
 
 // 产品承诺「打开网页即是 PI 仪表盘」：默认允许普通浏览器（Accept 含 text/html、
@@ -117,8 +121,8 @@ const app = createApp({
   dashboardService,
 });
 
-app.listen(port, () => {
-  console.log(`MiniLab API listening on http://localhost:${port}`);
+app.listen(port, host, () => {
+  console.log(`MiniLab API listening on http://${host}:${port}`);
   console.log(`Database: ${databasePath}`);
   // 打包成桌面版（pkg）时自动打开默认浏览器进 PI 仪表盘
   if (process.env.MINILAB_OPEN_BROWSER === '1') {

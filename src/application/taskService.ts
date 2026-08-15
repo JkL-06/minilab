@@ -64,6 +64,16 @@ export class TaskService {
     return task;
   }
 
+  /** Every Task assigned to one Agent (its workload, across projects). */
+  listAgentTasks(requesterUserId: string, agentId: string): Task[] {
+    const agent = this.agents.findById(agentId);
+    if (!agent) {
+      throw new AgentNotFoundError(agentId);
+    }
+    this.assertLabOwnedBy(requesterUserId, agent.labId);
+    return this.tasks.findByAssignee(agentId);
+  }
+
   updateTask(requesterUserId: string, taskId: string, patch: TaskUpdatePatch): Task {
     const task = this.requireTask(taskId);
     const project = this.assertProjectOwnedBy(requesterUserId, task.projectId);

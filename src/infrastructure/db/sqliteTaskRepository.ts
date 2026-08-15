@@ -86,6 +86,13 @@ export class SqliteTaskRepository implements TaskRepository {
     return rows.map(toTask);
   }
 
+  findByAssignee(agentId: string): Task[] {
+    const rows = this.db
+      .prepare('SELECT * FROM tasks WHERE assignee_agent_id = ? ORDER BY created_at ASC')
+      .all(agentId) as TaskRow[];
+    return rows.map(toTask);
+  }
+
   update(task: Task): void {
     const row = toRow(task);
     this.db

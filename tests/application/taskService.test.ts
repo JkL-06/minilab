@@ -35,7 +35,7 @@ function world(userId = 'user-1') {
   agents.insert(alice);
   const project = createProject({ labId: lab.id, title: 'Survey' });
   projects.insert(project);
-  return { service, labs, lab, alice, project, agents, tasks };
+  return { service, labs, lab, alice, project, agents, projects, tasks };
 }
 
 test('createTask assigns a task to an agent in the same lab (SPEC-004 #1)', () => {
@@ -229,3 +229,34 @@ test('updateTask forbids a non-owner and an unknown task', () => {
   assert.throws(() => service.updateTask('user-2', task.id, { title: 'X' }), LabForbiddenError);
   assert.throws(() => service.updateTask('user-1', 'no-such-task', { title: 'X' }), TaskNotFoundError);
 });
+
+test('listAgentTasks returns every task assigned to one agent across projects', () => {
+  const { service, lab, alice, agents, projects, project } = world();
+  const bob = createAgent({ labId: lab.id, name: 'Bob' });
+  agents.insert(bob);
+  const p2 = createProject({ labId: lab.id, title: 'Second' });
+  projects.insert(p2);
+
+  const t1 = service.createTask('user-1', project.id, {
+    title: 'A1',
+    assigneeAgentId: alice.id,
+  });
+  const t2 = service.createTask('user-1', p2.id, { title: 'A2', assigneeAgentId: alice.id });
+  service.createTask('user-1', p2.id, { title: 'B1', assigneeAgentId: bob.id });
+
+  const aliceTasks = service.listAgentTasks('user-1', alice.id);
+  assert.deepEqual(
+    aliceTasks.map((t) => t.title).sort(),
+    ['A1', 'A2'],
+  );
+  assert.ok(aliceTasks.every((t) => t.assigneeAgentId === alice.id));
+  void t1;
+  void t2;
+});
+
+test('listAgentTasks forbids a non-owner and rejects an unknown agent', () => {
+  const { service, alice } = world();
+  assert.throws(() => service.listAgentTasks('user-2', alice.id), LabForbiddenError);
+  assert.throws(() => service.listAgentTasks('user-1', 'no-such-agent'), AgentNotFoundError);
+});
+
