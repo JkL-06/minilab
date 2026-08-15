@@ -5,6 +5,7 @@ MiniLab 的官方下载与安装落地页（`index.html`）——零依赖的纯
 
 - **线上地址**：https://JkL-06.github.io/minilab/ （GitHub Pages，源 = `gh-pages` 分支）
 - **代码仓库**：https://github.com/JkL-06/minilab
+- **npm 包**：https://www.npmjs.com/package/minilab （`npx minilab` 一行安装）
 
 ## 目录
 
@@ -22,11 +23,12 @@ const CONFIG = {
   version: 'v0.1',
   repoUrl: 'https://github.com/JkL-06/minilab',                          // 代码仓库
   zipUrl: 'https://github.com/JkL-06/minilab/archive/refs/heads/main.zip', // 直接下载 ZIP
+  npmUrl: 'https://www.npmjs.com/package/minilab',                       // npm 页面（npx minilab）
 };
 ```
 
-所有「立即下载」「下载 ZIP」按钮与命令行 `git clone` 示例都由 `CONFIG` 驱动。
-改版本号时同步更新 `version` 与文案里的版本、SPEC 编号、测试数。
+所有「立即下载」「下载 ZIP」按钮与命令行示例（`npx minilab` / `git clone`）都由
+`CONFIG` 驱动。改版本号时同步更新 `version` 与文案里的版本、SPEC 编号、测试数。
 
 ## 改完网站怎么上线（GitHub Pages，源为 `gh-pages` 分支）
 
@@ -48,7 +50,8 @@ cp website/index.html website/README.md website/rebuild-preview.sh /tmp/ghpages/
 cd /tmp/ghpages && git init -q && git add -A
 git -c user.name="JkL-06" -c user.email="ljkcka666@163.com" commit -q -m "site: update"
 git remote add origin https://github.com/JkL-06/minilab.git
-git push origin HEAD:refs/heads/gh-pages
+# 临时目录是全新历史，每次都是非快进，必须 --force
+git push --force origin HEAD:refs/heads/gh-pages
 cd ..
 ```
 
@@ -62,10 +65,13 @@ npx serve .        # → http://localhost:5000
 # 或直接双击打开 index.html（静态单页，无跨域依赖）
 ```
 
-## 其他发布渠道（可选）
+## 其他发布渠道
 
 - **Cloudflare Pages / Netlify**：拖拽上传整个 `website/` 目录即得 HTTPS 域名，与 GitHub Pages 可并存。
-- **npm 分发（未来）**：v0.1 以源码分发；后续可发布 `npx minilab` CLI 包，把体验做到和主流 CLI 工具一致。
+- **npm 分发（已上线）**：`minilab@0.1.0` 已发布到 npm，任何机器装好 Node.js 20+ 后运行
+  `npx minilab` 即可启动。发布流程：`npm publish`（`prepublishOnly` 会自动先构建 + 跑 353 项测试）。
+  ⚠️ 发布前 npm 账号需开启 2FA，并生成 **Granular Access Token**：Package access = **All packages**、
+  Permissions = **Read and write**、勾选 **Bypass 2FA**——否则 `npm publish` 返回 403。
 
 ## 注意
 
