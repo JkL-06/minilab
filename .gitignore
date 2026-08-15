@@ -1,0 +1,17 @@
+node_modules/
+dist/
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.key
+*.log
+
+# 内部资料 / 生成物 —— 绝不随公开仓库发布
+MiniLab-Development-Pack-v0.1/
+.claude/
+website/preview.html
+.env*
+.DS_Store
+Thumbs.db

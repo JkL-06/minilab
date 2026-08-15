@@ -1,0 +1,31 @@
+{
+  "name": "minilab",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MiniLab - persistent AI research lab (SPEC-001: Lab Core)",
+  "main": "dist/src/server.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prestart": "npm run build",
+    "start": "node dist/src/server.js",
+    "dev": "node --watch dist/src/server.js",
+    "test": "npm run build && node --test dist/tests/",
+    "demo": "npm run build && node scripts/demo.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "express": "^4.21.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.14.0",
+    "@types/supertest": "^6.0.2",
+    "supertest": "^7.0.0",
+    "typescript": "^5.5.4"
+  }
+}

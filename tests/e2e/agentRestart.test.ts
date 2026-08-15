@@ -1,0 +1,165 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import request from 'supertest';
+
+import { createApp } from '../../src/api/app';
+import { AgentRuntimeService } from '../../src/application/agentRuntimeService';
+import { AgentService } from '../../src/application/agentService';
+import { ArtifactService } from '../../src/application/artifactService';
+import { DashboardService } from '../../src/application/dashboardService';
+import { LabService } from '../../src/application/labService';
+import { ModelConfigService } from '../../src/application/modelConfigService';
+import { ModelGatewayService } from '../../src/application/modelGateway';
+import { ProjectService } from '../../src/application/projectService';
+import { TaskService } from '../../src/application/taskService';
+import { openDatabase, type MiniLabDb } from '../../src/infrastructure/db/database';
+import { SqliteAgentRepository } from '../../src/infrastructure/db/sqliteAgentRepository';
+import { SqliteAgentRunRepository } from '../../src/infrastructure/db/sqliteAgentRunRepository';
+import { SqliteArtifactRepository } from '../../src/infrastructure/db/sqliteArtifactRepository';
+import { SqliteLabRepository } from '../../src/infrastructure/db/sqliteLabRepository';
+import { SqliteModelConfigRepository } from '../../src/infrastructure/db/sqliteModelConfigRepository';
+import { SqliteProjectRepository } from '../../src/infrastructure/db/sqliteProjectRepository';
+import { SqliteTaskRepository } from '../../src/infrastructure/db/sqliteTaskRepository';
+import { MemoryService } from '../../src/application/memoryService';
+import { KeywordMemorySearch } from '../../src/application/memorySearch';
+import { SqliteMemoryRepository } from '../../src/infrastructure/db/sqliteMemoryRepository';
+import { OpenAICompatibleAdapter } from '../../src/infrastructure/models/adapters/openAiCompatibleAdapter';
+import { MockProviderAdapter } from '../../src/infrastructure/models/adapters/mockProviderAdapter';
+import { getOrCreateCredentialCipher } from '../../src/infrastructure/models/credentialCipher';
+import { MeetingService } from '../../src/application/meetingService';
+import { SqliteMeetingRepository } from '../../src/infrastructure/db/sqliteMeetingRepository';
+import { SqliteDecisionRepository } from '../../src/infrastructure/db/sqliteDecisionRepository';
+import { cleanupTempDb, tempDbPath } from '../support/tempDb';
+
+function appWith(db: MiniLabDb, dbPath: string) {
+  const labRepository = new SqliteLabRepository(db);
+  const agentRepository = new SqliteAgentRepository(db);
+  const projectRepository = new SqliteProjectRepository(db);
+  const taskRepository = new SqliteTaskRepository(db);
+  const labService = new LabService(labRepository);
+  const agentService = new AgentService(agentRepository, labRepository);
+  const projectService = new ProjectService(projectRepository, labRepository);
+  const taskService = new TaskService(taskRepository, projectRepository, agentRepository, labRepository);
+  const modelConfigService = new ModelConfigService(
+    new SqliteModelConfigRepository(db),
+    labRepository,
+    getOrCreateCredentialCipher(undefined, `${dbPath}.key`),
+  );
+  const modelGateway = new ModelGatewayService({
+    openai_compatible: new OpenAICompatibleAdapter(),
+    mock: new MockProviderAdapter(),
+  });
+  const memoryService = new MemoryService(
+    new SqliteMemoryRepository(db),
+    labRepository,
+    agentRepository,
+    projectRepository,
+    new KeywordMemorySearch(),
+  );
+  const artifactService = new ArtifactService(
+    new SqliteArtifactRepository(db),
+    projectRepository,
+    labRepository,
+  );
+  const agentRuntime = new AgentRuntimeService(
+    agentRepository,
+    labRepository,
+    projectRepository,
+    taskRepository,
+    taskService,
+    modelConfigService,
+    modelGateway,
+    new SqliteAgentRunRepository(db),
+    memoryService,
+    artifactService,
+  );
+  const meetingService = new MeetingService(
+    new SqliteMeetingRepository(db),
+    new SqliteDecisionRepository(db),
+    projectRepository,
+    labRepository,
+    agentRepository,
+    taskRepository,
+    new SqliteArtifactRepository(db),
+    taskService,
+    memoryService,
+  );
+  const dashboardService = new DashboardService(
+    labRepository,
+    agentRepository,
+    projectRepository,
+    taskRepository,
+    new SqliteArtifactRepository(db),
+    new SqliteMeetingRepository(db),
+    new SqliteDecisionRepository(db),
+    new SqliteAgentRunRepository(db),
+  );
+  return createApp({ labService, agentService, projectService, taskService, modelConfigService, modelGateway, agentRuntime, memoryService, artifactService, meetingService, dashboardService });
+}
+
+/**
+ * Acceptance criteria (SPEC-002):
+ *  1. Creating Alice returns a persistent agent_id.
+ *  2. Alice survives application restart.
+ *  3. Alice is associated with exactly one Lab.
+ *  4. Cross-lab access is rejected.
+ */
+test('acceptance: Alice is hired, survives a restart, stays in one lab, and is cross-lab protected', async () => {
+  const dbPath = tempDbPath();
+  try {
+    let labId: string;
+    let agentId: string;
+
+    // --- First application instance ---
+    {
+      const db1 = openDatabase(dbPath);
+      const app1 = appWith(db1, dbPath);
+
+      const labRes = await request(app1).post('/labs').set('X-User-Id', 'user-1').send({ name: 'Lab' });
+      assert.equal(labRes.status, 201);
+      labId = labRes.body.lab.id;
+
+      const hireRes = await request(app1)
+        .post(`/labs/${labId}/agents`)
+        .set('X-User-Id', 'user-1')
+        .send({ name: 'Alice', role: 'researcher', specialization: 'memory' });
+
+      assert.equal(hireRes.status, 201);
+      assert.ok(hireRes.body.agent.id, 'persistent agent_id returned on hire');
+      assert.equal(hireRes.body.agent.labId, labId, 'exactly one Lab in v0.1');
+      agentId = hireRes.body.agent.id;
+
+      db1.close();
+    }
+
+    // --- Second application instance on the same database file ("restart") ---
+    {
+      const db2 = openDatabase(dbPath);
+      const app2 = appWith(db2, dbPath);
+
+      const getRes = await request(app2).get(`/agents/${agentId}`).set('X-User-Id', 'user-1');
+      assert.equal(getRes.status, 200);
+      assert.equal(getRes.body.agent.id, agentId);
+      assert.equal(getRes.body.agent.name, 'Alice');
+      assert.equal(getRes.body.agent.labId, labId);
+
+      const listRes = await request(app2)
+        .get(`/labs/${labId}/agents`)
+        .set('X-User-Id', 'user-1');
+      assert.deepEqual(
+        listRes.body.agents.map((a: { id: string }) => a.id),
+        [agentId],
+      );
+
+      const crossLab = await request(app2)
+        .get(`/agents/${agentId}`)
+        .set('X-User-Id', 'user-2');
+      assert.equal(crossLab.status, 403, 'cross-lab access must be rejected');
+
+      db2.close();
+    }
+  } finally {
+    cleanupTempDb(dbPath);
+  }
+});
