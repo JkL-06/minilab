@@ -99,12 +99,16 @@ MiniLab 已正式对外发布，三种方式任选：
 
 | 方式 | 说明 | 链接 / 命令 |
 | ---- | ---- | ----------- |
-| **npm 一行命令** ⭐ | 无需克隆、无需手动装依赖，npm 自动下载并运行最新版 | `npx minilab` |
+| **Windows 桌面版** ⭐ | 单文件、免装 Node.js，下载后双击即用 | https://github.com/JkL-06/minilab/releases/download/v0.1.0/MiniLab.exe |
+| **npm 一行命令** | 无需克隆、无需手动装依赖，npm 自动下载并运行最新版 | `npx minilab` |
 | **下载网站** | 官方落地页：浏览特性、选安装方式、下载 ZIP | https://jkl-06.github.io/minilab/ |
 | **源码仓库** | 公开源码 + MIT 许可证，可自行修改、二次开发 | https://github.com/JkL-06/minilab |
 
 ```bash
-# 最快方式：一行命令启动（先装好 Node.js 20+）
+# 最简单：Windows 用户直接下载桌面版（免装 Node.js，双击即用）
+#   https://github.com/JkL-06/minilab/releases/download/v0.1.0/MiniLab.exe
+
+# 其次：一行命令启动（先装好 Node.js 20+）
 npx minilab
 # → 打开 http://localhost:3000
 

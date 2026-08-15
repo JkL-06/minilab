@@ -291,7 +291,7 @@
 <header class="hero" id="top">
   <div class="wrap hero-grid">
     <div>
-      <span class="badge"><span class="dot"></span> v0.1 · npm 已发布 · SPEC-001–010 已交付 · 353 项测试通过</span>
+      <span class="badge"><span class="dot"></span> v0.1 · 已发布 Windows 桌面版 · npm · 下载网站 · 353 项测试通过</span>
       <h1>你的<a class="grad">持久化 AI 科研实验室</a></h1>
       <p class="hero-sub">
         MiniLab 是一个开源、自托管的 AI 科研实验室。雇佣持久的 AI 研究员
@@ -300,8 +300,8 @@
         无需外网、无需真实 API Key 也能<b>完整试用</b>。
       </p>
       <div class="hero-ctas">
-        <a class="btn btn-primary" href="#install">⚡ 一行命令安装</a>
-        <a class="btn btn-ghost" href="#install">🚀 快速开始</a>
+        <a class="btn btn-primary" id="exe-download" href="#install">⬇ 下载 Windows 桌面版 (exe)</a>
+        <a class="btn btn-ghost" href="#install">⚡ 一行命令安装</a>
       </div>
       <div class="terminal">
         <div class="term-bar">
@@ -518,17 +518,44 @@
   <div class="wrap">
     <p class="sec-eyebrow center">GET STARTED</p>
     <h2 class="sec-title center">3 分钟跑起来</h2>
-    <p class="sec-sub">先安装 <a href="https://nodejs.org/" target="_blank" rel="noopener">Node.js 20+</a>，然后任选一种方式。<b>最快：一行 <code>npx minilab</code></b>。Windows 用户也可双击 <code>start.bat</code>。</p>
+    <p class="sec-sub">最简单：<b>下载 Windows 桌面版，双击即用，连 Node.js 都不用装</b>。想用命令行的朋友也可以选其他方式。</p>
 
     <div class="tabs">
-      <button class="tab active" data-tab="tab-npx">⚡ npx 一行命令</button>
+      <button class="tab active" data-tab="tab-exe">🖥 Windows 桌面版</button>
+      <button class="tab" data-tab="tab-npx">⚡ npx 一行命令</button>
       <button class="tab" data-tab="tab-clone">从源码安装</button>
       <button class="tab" data-tab="tab-zip">下载 ZIP</button>
       <button class="tab" data-tab="tab-windows">Windows 一键</button>
     </div>
 
     <div class="steps">
-      <div class="tab-pane active" id="tab-npx">
+      <div class="tab-pane active" id="tab-exe">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div>
+            <h3>下载 Windows 桌面版</h3>
+            <p>单文件、免安装：已内置 Node.js 运行时与 SQLite，无需任何依赖，支持 Windows 10 / 11。</p>
+            <a class="btn btn-primary" id="exe-download-tab" href="#install">⬇ 下载 MiniLab.exe (v0.1 · 58 MB)</a>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div>
+            <h3>双击 MiniLab.exe</h3>
+            <p>首次运行自动初始化数据库，然后 <b>自动打开浏览器</b> 进入 PI 仪表盘。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div>
+            <h3>想改端口？用命令行参数</h3>
+            <div class="cmd"><code data-copy="cmd-exe-port">MiniLab.exe --port 8080</code><button class="copy-btn" data-copy="cmd-exe-port">复制</button></div>
+            <p>数据默认存在 exe 同目录的 <code>data/minilab.db</code>，重启不丢。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-pane" id="tab-npx">
         <div class="step">
           <div class="step-num">1</div>
           <div>
@@ -651,8 +678,9 @@
     <p class="sec-eyebrow center">REQUIREMENTS</p>
     <h2 class="sec-title center">系统要求</h2>
     <div class="req-grid">
-      <div class="req"><div class="k">运行环境</div><div class="v ok">Node.js ≥ 20</div></div>
-      <div class="req"><div class="k">操作系统</div><div class="v">Windows / macOS / Linux</div></div>
+      <div class="req"><div class="k">桌面版</div><div class="v ok">免装 Node.js · 双击即用</div></div>
+      <div class="req"><div class="k">运行环境 (源码/npm)</div><div class="v">Node.js ≥ 20</div></div>
+      <div class="req"><div class="k">操作系统</div><div class="v">Windows 桌面版 · 任意平台源码/npm</div></div>
       <div class="req"><div class="k">数据库</div><div class="v muted">内置 SQLite · 无需额外安装</div></div>
       <div class="req"><div class="k">网络</div><div class="v muted">mock 模式全程离线；接真实模型时才需联网</div></div>
       <div class="req"><div class="k">API Key</div><div class="v muted">不需要 · 零配置可跑</div></div>
@@ -681,6 +709,10 @@
       <details>
         <summary>目前实现到哪一版规格？</summary>
         <p>SPEC-001～SPEC-010 全部交付，共 353 项自动化测试通过，含一份覆盖全部规格的端到端演示。规格驱动的开发仍在继续，下一个版本会在新规格就绪后发布。</p>
+      </details>
+      <details>
+        <summary>Windows 桌面版、<code>npx</code>、源码版有什么区别？</summary>
+        <p>跑的都是同一份 MiniLab，只是获取方式不同。<b>桌面版 (exe)</b> 内置了 Node.js 运行时和 SQLite，下载后双击即用，适合不想装任何环境的用户；<code>npx minilab</code> 适合已装好 Node.js 的用户；下载源码适合自己改代码、二次开发。</p>
       </details>
       <details>
         <summary><code>npx minilab</code> 和下载源码有什么区别？</summary>
@@ -718,12 +750,14 @@
  *   repoUrl : 托管 MiniLab 源码的公开仓库地址
  *   zipUrl  : 直接下载源码 ZIP 的地址（main 分支 codeload 直链）
  *   npmUrl  : MiniLab 在 npm 上的页面（npx minilab 即安装它）
+ *   exeUrl  : Windows 桌面版下载地址（GitHub Release 资产直链）
  * ============================================================ */
 const CONFIG = {
   version: 'v0.1',
   repoUrl: 'https://github.com/JkL-06/minilab',
   zipUrl: 'https://github.com/JkL-06/minilab/archive/refs/heads/main.zip',
   npmUrl: 'https://www.npmjs.com/package/minilab',
+  exeUrl: 'https://github.com/JkL-06/minilab/releases/download/v0.1.0/MiniLab.exe',
 };
 
 /* ---- 把配置写进页面 ---- */
@@ -749,6 +783,14 @@ const CONFIG = {
     el.setAttribute('target', '_blank');
     el.setAttribute('rel', 'noopener');
   });
+
+  /* Windows 桌面版按钮 → exe 下载直链 */
+  var exeEls = document.querySelectorAll('#exe-download, #exe-download-tab');
+  for (var i = 0; i < exeEls.length; i++) {
+    exeEls[i].setAttribute('href', CONFIG.exeUrl);
+    exeEls[i].setAttribute('target', '_blank');
+    exeEls[i].setAttribute('rel', 'noopener');
+  }
 })();
 
 /* ---- 复制按钮 ---- */

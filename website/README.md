@@ -6,6 +6,8 @@ MiniLab 的官方下载与安装落地页（`index.html`）——零依赖的纯
 - **线上地址**：https://JkL-06.github.io/minilab/ （GitHub Pages，源 = `gh-pages` 分支）
 - **代码仓库**：https://github.com/JkL-06/minilab
 - **npm 包**：https://www.npmjs.com/package/minilab （`npx minilab` 一行安装）
+- **Windows 桌面版**：https://github.com/JkL-06/minilab/releases/download/v0.1.0/MiniLab.exe
+  （GitHub Release `v0.1.0`，单文件免装 Node.js，双击即用）
 
 ## 目录
 
@@ -24,6 +26,7 @@ const CONFIG = {
   repoUrl: 'https://github.com/JkL-06/minilab',                          // 代码仓库
   zipUrl: 'https://github.com/JkL-06/minilab/archive/refs/heads/main.zip', // 直接下载 ZIP
   npmUrl: 'https://www.npmjs.com/package/minilab',                       // npm 页面（npx minilab）
+  exeUrl: 'https://github.com/JkL-06/minilab/releases/download/v0.1.0/MiniLab.exe', // 桌面版 exe
 };
 ```
 
@@ -67,6 +70,12 @@ npx serve .        # → http://localhost:5000
 
 ## 其他发布渠道
 
+- **Windows 桌面版 (exe)**：用 `@yao-pkg/pkg@6.0.0` 把 Node 20 运行时 + 服务器 + better-sqlite3
+  原生模块打成单个 `MiniLab.exe`（约 58 MB），上传为 GitHub Release 资产。命令 `npm run build:exe`。
+  关键点：`bin/minilab.js` 的 require 必须用**字面量路径**（pkg 静态分析只追踪字面量）；
+  better-sqlite3 的 `.node` 绑定通过 package.json `pkg.assets` 打入；打包版启动后
+  `MINILAB_OPEN_BROWSER=1` 自动开浏览器。发新版：`npm run build:exe` → 建 Release 标签 → 上传资产
+  → 更新本文件与 `index.html` 的 `CONFIG.exeUrl`。
 - **Cloudflare Pages / Netlify**：拖拽上传整个 `website/` 目录即得 HTTPS 域名，与 GitHub Pages 可并存。
 - **npm 分发（已上线）**：`minilab@0.1.0` 已发布到 npm，任何机器装好 Node.js 20+ 后运行
   `npx minilab` 即可启动。发布流程：`npm publish`（`prepublishOnly` 会自动先构建 + 跑 353 项测试）。
