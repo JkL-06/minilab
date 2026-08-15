@@ -228,6 +228,40 @@ npm run dev
   `connection_failed` / `invalid_response` / `unknown`）（SPEC-005 #4）；
 - 配置可被 `PATCH { "isEnabled": false }` 停用，停用后网关直接拒绝（`invalid_request`）。
 
+#### 接入真实 LLM（OpenAI 兼容，已实测）
+
+MiniLab 的 `openai_compatible` provider 走标准 `POST {baseUrl}/chat/completions`，
+任意 OpenAI 风格端点都可用（OpenAI / DeepSeek / 阿里云百炼 Qwen / Moonshot / vLLM /
+Ollama / 本地桩）。示例——接阿里云百炼（通义千问），`baseUrl` 用其兼容模式：
+
+```bash
+# 1) 建模型配置（apiKey 加密入库，绝不明文返回）
+curl -X POST -H "X-User-Id: local-pi" -H "Content-Type: application/json" \
+  -d '{
+    "name": "Qwen",
+    "provider": "openai_compatible",
+    "model": "qwen-plus",
+    "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "apiKey": "sk-..."
+  }' http://127.0.0.1:3000/labs/<labId>/model-configs
+
+# 2) 连通性测试（真实调用一次）
+curl -X POST -H "X-User-Id: local-pi" \
+  http://127.0.0.1:3000/model-configs/<modelConfigId>/test
+# → { "ok": true, "model": "qwen-plus", "content": "pong", ... }
+
+# 3) 让 Agent 真实执行任务：先建任务并推进到 running，再 POST run
+#    （PATCH /tasks/:id status=ready → status=running）
+curl -X POST -H "X-User-Id: local-pi" -H "Content-Type: application/json" \
+  -d '{ "taskId": "<taskId>", "instruction": "……", "maxTokens": 8000 }' \
+  http://127.0.0.1:3000/agents/<agentId>/runs
+# → succeeded 的 run 会把 artifact_proposals 实体化为 Artifact
+```
+
+- 单次调用默认 120 秒超时（`MINILAB_MODEL_TIMEOUT_MS` 可调）——长文/规划类输出数秒到数十秒属正常；
+- 模型必须按 system prompt 里的 schema 返回**严格 JSON**（会校验，不合法则产生 `schema` 失败 Run 且不动任务状态）；
+- `maxTokens` 建议按产出长度设（规划/长文档可给 8000，短任务可省略）。
+
 ### Agent Run 接口（SPEC-006 Agent Runtime）
 
 | 方法 | 路径 | 请求体 | 成功 | 错误 |
@@ -253,9 +287,10 @@ npm run dev
 - **配置缺失/停用/跨 Lab 是可追踪的失败**：Agent 没有 `modelConfigId`、配置被删/停用或
   指向其它 Lab，产生 `failed / config` 的 Run（配置行未知时 `provider`/`model` 为 `null`），
   而不是把接口打挂；
-- **建议永不自动实体化**（验收 #5）：结果里的 `suggested_tasks`、`memory_candidates`、
-  `artifact_proposals` 只是**提案**，Run 落库时记录在 `result` 里，**不会创建任何新的
-  Task / 记忆 / 产物**；
+- **只实体化 Artifact 提案**（SPEC-008 验收 #1）：结果里的 `suggested_tasks`、
+  `memory_candidates` 只是**提案**，Run 落库时记录在 `result` 里，**不会创建新的 Task / 记忆**；
+  `artifact_proposals` 在 `succeeded` Run 时被**实体化为持久 Artifact**（落到 `artifacts` 表），
+  回填的 `id` 记录在结果里——研究产出以可查、可导出的 Artifact 形式沉淀（验收 #5）；
 - 触发前置错误（Agent/Task 不存在、任务未指派给该 Agent、非 Lab 所有者、缺身份）直接返回
   错误码，**不产生 Run 记录**——只有真正的执行尝试才落库。
 
@@ -956,6 +991,8 @@ Invoke-RestMethod -Method Post -Uri http://localhost:3000/labs `
 | `MODEL_GATEWAY_KEY` | 自动生成 | 凭据加密主密钥（64 位十六进制，32 字节）。**不设置时**自动生成并存到
   `<DATABASE_PATH>.key` 文件（如 `data/minilab.db.key`）；设置了则优先使用，便于在多个进程/
   机器间共享同一把密钥 |
+| `MINILAB_MODEL_TIMEOUT_MS` | `120000` | 单次真实模型调用（`openai_compatible`）的超时毫秒数。云上模型产出长文档时可能耗时
+  数十秒，默认 120 秒足够；网络差可调大，测试/本地桩可调小 |
 
 Windows 下设置环境变量再启动：
 

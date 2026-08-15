@@ -58,8 +58,9 @@ const modelConfigService = new ModelConfigService(
   labRepository,
   getOrCreateCredentialCipher(process.env.MODEL_GATEWAY_KEY, `${databasePath}.key`),
 );
+const modelTimeoutMs = Number(process.env.MINILAB_MODEL_TIMEOUT_MS ?? 120_000);
 const modelGateway = new ModelGatewayService({
-  openai_compatible: new OpenAICompatibleAdapter(),
+  openai_compatible: new OpenAICompatibleAdapter(Number.isFinite(modelTimeoutMs) ? modelTimeoutMs : 120_000),
   mock: new MockProviderAdapter(),
 });
 const memoryService = new MemoryService(

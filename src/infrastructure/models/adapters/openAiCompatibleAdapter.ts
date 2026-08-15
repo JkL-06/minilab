@@ -18,11 +18,16 @@ interface ChatCompletion {
  * local stub — so there is no provider SDK and no SDK type to leak (SPEC-005
  * #2). Failures are mapped to normalized `ModelGatewayError` categories
  * (SPEC-005 #4) and error messages never echo credentials (SPEC-005 #5).
+ *
+ * The default timeout is tuned for real (cloud) providers: a long planning or
+ * document-producing call can take well over a minute, and the old 3s default
+ * made every real call fail as a timeout. Tests pass their own small value
+ * explicitly, so raising the default does not slow the suite.
  */
 export class OpenAICompatibleAdapter implements ProviderAdapter {
   readonly provider = 'openai_compatible' as const;
 
-  constructor(private readonly timeoutMs = 3_000) {}
+  constructor(private readonly timeoutMs = 120_000) {}
 
   async complete(request: ModelRequest, options: AdapterOptions): Promise<ModelResponse> {
     const baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, '');

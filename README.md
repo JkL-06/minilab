@@ -110,14 +110,14 @@ MiniLab 已正式对外发布，三种方式任选：
 
 | 方式 | 说明 | 链接 / 命令 |
 | ---- | ---- | ----------- |
-| **Windows 桌面版** ⭐ | 单文件、免装 Node.js，下载后双击即用 | https://github.com/JkL-06/minilab/releases/download/v0.2.0/MiniLab.exe |
+| **Windows 桌面版** ⭐ | 单文件、免装 Node.js，下载后双击即用 | https://github.com/JkL-06/minilab/releases/download/v0.2.1/MiniLab.exe |
 | **npm 一行命令** | 无需克隆、无需手动装依赖，npm 自动下载并运行最新版 | `npx minilab` |
 | **下载网站** | 官方落地页：浏览特性、选安装方式、下载 ZIP | https://jkl-06.github.io/minilab/ |
 | **源码仓库** | 公开源码 + MIT 许可证，可自行修改、二次开发 | https://github.com/JkL-06/minilab |
 
 ```bash
 # 最简单：Windows 用户直接下载桌面版（免装 Node.js，双击即用）
-#   https://github.com/JkL-06/minilab/releases/download/v0.2.0/MiniLab.exe
+#   https://github.com/JkL-06/minilab/releases/download/v0.2.1/MiniLab.exe
 
 # 其次：一行命令启动（先装好 Node.js 20+）
 npx minilab
@@ -140,7 +140,7 @@ cd minilab && npm install && npm start
 > 访问以本地用户身份放行；API 调用仍需携带 `X-User-Id` 头，`npx minilab` 与源码运行
 > 方式的行为不变。
 
-- **npm 包**：`minilab@0.2.0` — https://www.npmjs.com/package/minilab
+- **npm 包**：`minilab@0.2.1` — https://www.npmjs.com/package/minilab
 - **许可证**：MIT（见仓库根目录 [`LICENSE`](LICENSE)）
 - **完整中文使用教程**：见 [`docs/USAGE.md`](docs/USAGE.md)
 

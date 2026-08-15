@@ -6,8 +6,8 @@ MiniLab 的官方下载与安装落地页（`index.html`）——零依赖的纯
 - **线上地址**：https://JkL-06.github.io/minilab/ （GitHub Pages，源 = `gh-pages` 分支）
 - **代码仓库**：https://github.com/JkL-06/minilab
 - **npm 包**：https://www.npmjs.com/package/minilab （`npx minilab` 一行安装）
-- **Windows 桌面版**：https://github.com/JkL-06/minilab/releases/download/v0.2.0/MiniLab.exe
-  （GitHub Release `v0.2.0`，单文件免装 Node.js，双击即用）
+- **Windows 桌面版**：https://github.com/JkL-06/minilab/releases/download/v0.2.1/MiniLab.exe
+  （GitHub Release `v0.2.1`，单文件免装 Node.js，双击即用）
 
 ## 目录
 
@@ -22,11 +22,11 @@ MiniLab 的官方下载与安装落地页（`index.html`）——零依赖的纯
 
 ```js
 const CONFIG = {
-  version: 'v0.2',
+  version: 'v0.2.1',
   repoUrl: 'https://github.com/JkL-06/minilab',                          // 代码仓库
   zipUrl: 'https://github.com/JkL-06/minilab/archive/refs/heads/main.zip', // 直接下载 ZIP
   npmUrl: 'https://www.npmjs.com/package/minilab',                       // npm 页面（npx minilab）
-  exeUrl: 'https://github.com/JkL-06/minilab/releases/download/v0.2.0/MiniLab.exe', // 桌面版 exe
+  exeUrl: 'https://github.com/JkL-06/minilab/releases/download/v0.2.1/MiniLab.exe', // 桌面版 exe
 };
 ```
 
@@ -92,7 +92,7 @@ npx serve .        # → http://localhost:5000
   - 发新版：`npm run build:exe` → 建 Release 标签 → 上传资产（同名替换：先删旧资产再传）
     → 更新本文件与 `index.html` 的 `CONFIG.exeUrl` 与尺寸文案。
 - **Cloudflare Pages / Netlify**：拖拽上传整个 `website/` 目录即得 HTTPS 域名，与 GitHub Pages 可并存。
-- **npm 分发（已上线）**：`minilab@0.2.0` 已发布到 npm，任何机器装好 Node.js 20+ 后运行
+- **npm 分发（已上线）**：`minilab@0.2.1` 已发布到 npm，任何机器装好 Node.js 20+ 后运行
   `npx minilab` 即可启动。发布流程：`npm publish`（`prepublishOnly` 会自动先构建 + 跑 383 项测试）。
   ⚠️ 发布前 npm 账号需开启 2FA，并生成 **Granular Access Token**：Package access = **All packages**、
   Permissions = **Read and write**、勾选 **Bypass 2FA**——否则 `npm publish` 返回 403。
