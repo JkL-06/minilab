@@ -1,19 +1,48 @@
 {
   "name": "minilab",
   "version": "0.1.0",
-  "private": true,
-  "description": "MiniLab - persistent AI research lab (SPEC-001: Lab Core)",
+  "description": "MiniLab - persistent AI research lab: hire persistent AI researchers, push research with tasks/memory/artifacts/meetings, PI dashboard included",
   "main": "dist/src/server.js",
+  "bin": {
+    "minilab": "bin/minilab.js"
+  },
+  "files": [
+    "dist/src",
+    "bin",
+    "README.md",
+    "LICENSE",
+    "docs",
+    "start.bat",
+    "test.bat"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "prestart": "npm run build",
     "start": "node dist/src/server.js",
     "dev": "node --watch dist/src/server.js",
     "test": "npm run build && node --test dist/tests/",
-    "demo": "npm run build && node scripts/demo.mjs"
+    "demo": "npm run build && node scripts/demo.mjs",
+    "prepublishOnly": "npm run build && npm test"
   },
   "engines": {
     "node": ">=20"
+  },
+  "license": "MIT",
+  "keywords": [
+    "ai",
+    "research",
+    "lab",
+    "agents",
+    "sqlite",
+    "orchestration"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JkL-06/minilab.git"
+  },
+  "homepage": "https://jkl-06.github.io/minilab/",
+  "bugs": {
+    "url": "https://github.com/JkL-06/minilab/issues"
   },
   "dependencies": {
     "better-sqlite3": "^11.3.0",
