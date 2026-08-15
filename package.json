@@ -22,7 +22,8 @@
     "dev": "node --watch dist/src/server.js",
     "test": "npm run build && node --test dist/tests/",
     "demo": "npm run build && node scripts/demo.mjs",
-    "prepublishOnly": "npm run build && npm test"
+    "prepublishOnly": "npm run build && npm test",
+    "build:exe": "npm run build && pkg bin/minilab.js --output dist-exe/MiniLab.exe"
   },
   "engines": {
     "node": ">=20"
@@ -54,7 +55,17 @@
     "@types/express": "^4.17.21",
     "@types/node": "^20.14.0",
     "@types/supertest": "^6.0.2",
+    "@yao-pkg/pkg": "6.0.0",
     "supertest": "^7.0.0",
     "typescript": "^5.5.4"
+  },
+  "pkg": {
+    "assets": [
+      "node_modules/better-sqlite3/build/Release/better_sqlite3.node"
+    ],
+    "targets": [
+      "node20-win-x64"
+    ],
+    "outputPath": "dist-exe"
   }
 }

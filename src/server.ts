@@ -1,3 +1,4 @@
+import { exec } from 'node:child_process';
 import { createApp } from './api/app';
 import { AgentRuntimeService } from './application/agentRuntimeService';
 import { AgentService } from './application/agentService';
@@ -113,4 +114,15 @@ const app = createApp({
 app.listen(port, () => {
   console.log(`MiniLab API listening on http://localhost:${port}`);
   console.log(`Database: ${databasePath}`);
+  // 打包成桌面版（pkg）时自动打开默认浏览器进 PI 仪表盘
+  if (process.env.MINILAB_OPEN_BROWSER === '1') {
+    const url = `http://localhost:${port}`;
+    const cmd =
+      process.platform === 'win32'
+        ? `start "" "${url}"`
+        : process.platform === 'darwin'
+          ? `open "${url}"`
+          : `xdg-open "${url}"`;
+    exec(cmd, () => {});
+  }
 });

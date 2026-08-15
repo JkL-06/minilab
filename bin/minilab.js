@@ -50,5 +50,10 @@ if (has('-h') || has('--help')) {
 if (has('--port')) process.env.PORT = value('--port', process.env.PORT);
 if (has('--data-path')) process.env.DATABASE_PATH = value('--data-path', process.env.DATABASE_PATH);
 
+// 打包成桌面版（pkg）时，启动后自动打开浏览器进 PI 仪表盘。
+if (process.pkg) process.env.MINILAB_OPEN_BROWSER = '1';
+
 // server.ts reads process.env.PORT / DATABASE_PATH at import time.
-require(path.join(__dirname, '..', 'dist', 'src', 'server.js'));
+// 注意：必须用字面量相对路径（pkg 静态分析只追踪字面量 require），
+// 动态 path.join 会在打包时被漏掉导致 server.js 不进包。
+require('../dist/src/server.js');
