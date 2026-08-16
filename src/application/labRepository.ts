@@ -11,4 +11,10 @@ export interface LabRepository {
   findById(id: string): Lab | null;
   findByOwner(ownerUserId: string): Lab[];
   update(lab: Lab): void;
+  /**
+   * Transfers every Lab owned by `fromOwnerUserId` to `toOwnerUserId`.
+   * Used on first-run setup to adopt the legacy `local-pi` data under the
+   * new 0th user. Returns the number of Labs reassigned.
+   */
+  reassignOwner(fromOwnerUserId: string, toOwnerUserId: string): number;
 }

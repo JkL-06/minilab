@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import request from 'supertest';
+import { testAuthDeps } from '../support/testAuth';
 
 import { createApp } from '../../src/api/app';
 import { AgentService } from '../../src/application/agentService';
@@ -86,6 +87,7 @@ function testApp() {
     artifactService,
     meetingService,
     dashboardService,
+    ...testAuthDeps(),
   });
   return { app, labService, taskService };
 }
@@ -351,4 +353,103 @@ test('lab export serves a Markdown bundle derived from canonical state', async (
   assert.match(res.text, /## 项目/);
   assert.match(res.text, /### Survey paper/);
   assert.match(res.text, /Collect baseline results/);
+});
+
+test('S1 People View: browser GET /projects/:projectId/tasks groups tasks by person', async (t) => {
+  const { app } = testApp();
+  const world = await createWorld(app);
+
+  // Move the fixture task to `review` so the ⏳ 等待 PI bucket is exercised.
+  for (const status of ['ready', 'running', 'review']) {
+    const move = await request(app).patch(`/tasks/${world.taskId}`).set('X-User-Id', USER).send({ status });
+    assert.equal(move.status, 200);
+  }
+
+  await t.test('default view=people renders per-person buckets with the 等待 PI label', async () => {
+    const res = await request(app)
+      .get(`/projects/${world.projectId}/tasks`)
+      .set('X-User-Id', USER)
+      .set('Accept', BROWSER);
+    assert.equal(res.status, 200);
+    assert.match(String(res.headers['content-type']), /text\/html/);
+    assert.match(res.text, /Alice/); // person card
+    assert.match(res.text, /⏳ 等待 PI/); // review bucket + chip badge
+    assert.match(res.text, /Collect baseline results/);
+    assert.match(res.text, /\?view=people/); // switcher
+    assert.match(res.text, /\?view=kanban/);
+  });
+
+  await t.test('view=kanban renders status columns', async () => {
+    const res = await request(app)
+      .get(`/projects/${world.projectId}/tasks?view=kanban`)
+      .set('X-User-Id', USER)
+      .set('Accept', BROWSER);
+    assert.equal(res.status, 200);
+    assert.match(res.text, /看板/);
+    assert.match(res.text, /⏳ 等待 PI/);
+    assert.match(res.text, /Collect baseline results/);
+  });
+
+  await t.test('JSON clients fall through to the task API contract', async () => {
+    const res = await request(app)
+      .get(`/projects/${world.projectId}/tasks`)
+      .set('X-User-Id', USER)
+      .set('Accept', JSON_CLIENT);
+    assert.equal(res.status, 200);
+    assert.match(String(res.headers['content-type']), /application\/json/);
+    assert.equal(res.body.tasks[0].title, 'Collect baseline results');
+    assert.equal(res.body.tasks[0].status, 'review');
+  });
+});
+
+test('S1 sidebar index pages: /projects, /activities, /lab, /memory render thin HTML lists', async (t) => {
+  const { app } = testApp();
+  const world = await createWorld(app);
+
+  // Seed a lab-scoped memory through the JSON API (no UI form exists for it).
+  const memRes = await request(app)
+    .post(`/labs/${world.labId}/memory`)
+    .set('X-User-Id', USER)
+    .send({
+      scope: 'lab',
+      content: 'The team prefers reviews over long memos.',
+      sourceType: 'pi',
+      sourceId: 'note-1',
+      importance: 4,
+    });
+  assert.equal(memRes.status, 201);
+
+  await t.test('GET /projects lists cross-Lab projects', async () => {
+    const res = await request(app).get('/projects').set('X-User-Id', USER).set('Accept', BROWSER);
+    assert.equal(res.status, 200);
+    assert.match(String(res.headers['content-type']), /text\/html/);
+    assert.match(res.text, /Survey paper/);
+    assert.match(res.text, /Browser Lab/);
+  });
+
+  await t.test('GET /activities lists meetings newest-first', async () => {
+    const res = await request(app).get('/activities').set('X-User-Id', USER).set('Accept', BROWSER);
+    assert.equal(res.status, 200);
+    assert.match(res.text, /Sprint sync/);
+    assert.match(res.text, /Survey paper/); // project title column
+  });
+
+  await t.test('GET /lab lists the member roster', async () => {
+    const res = await request(app).get('/lab').set('X-User-Id', USER).set('Accept', BROWSER);
+    assert.equal(res.status, 200);
+    assert.match(res.text, /Alice/);
+    assert.match(res.text, /NLP/); // specialization
+  });
+
+  await t.test('GET /memory lists memory rows with provenance', async () => {
+    const res = await request(app).get('/memory').set('X-User-Id', USER).set('Accept', BROWSER);
+    assert.equal(res.status, 200);
+    assert.match(res.text, /The team prefers reviews over long memos\./);
+    assert.match(res.text, /实验室作用域/);
+  });
+
+  await t.test('non-browser clients fall through (no JSON index route exists)', async () => {
+    const res = await request(app).get('/projects').set('X-User-Id', USER).set('Accept', JSON_CLIENT);
+    assert.equal(res.status, 404);
+  });
 });

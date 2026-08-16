@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import request from 'supertest';
+import { testAuthDeps } from '../support/testAuth';
 
 import { createApp } from '../../src/api/app';
 import { AgentService } from '../../src/application/agentService';
@@ -49,8 +50,9 @@ function testApp() {
   const decisions = inMemoryDecisionRepository();
   const meetingService = testMeetingService({ projectRepo, labRepo, agentRepo, taskRepo, artifacts, taskService, memoryService, meetings, decisions });
   const dashboardService = testDashboardService({ labRepo, agentRepo, projectRepo, taskRepo, artifacts, meetings, decisions, runs });
-  const app = createApp({ labService, agentService, projectService, taskService, modelConfigService: infra.modelConfigService, modelGateway: infra.gateway, agentRuntime: runtime, memoryService, artifactService, meetingService, dashboardService });
-  return { app, labService, mock: infra.mock, runs };
+  const auth = testAuthDeps();
+  const app = createApp({ labService, agentService, projectService, taskService, modelConfigService: infra.modelConfigService, modelGateway: infra.gateway, agentRuntime: runtime, memoryService, artifactService, meetingService, dashboardService, ...auth });
+  return { app, labService, mock: infra.mock, runs, userService: auth.userService };
 }
 
 type World = {
@@ -177,7 +179,7 @@ test('GET /labs/:labId/dashboard serves the default HTML page with every section
   // 3. blocked task visible (acceptance #2).
   assert.match(html, /需要关注的任务/);
   assert.match(html, /Map evidence/);
-  assert.match(html, /受阻/); // blocked badge
+  assert.match(html, /阻塞/); // blocked badge (TASK_STATUS_LABELS)
   // 4. pending PI question visible (acceptance #3).
   assert.match(html, /等待你的问题/);
   assert.match(html, /Should we prioritize individual differences\?/);
@@ -190,6 +192,24 @@ test('GET /labs/:labId/dashboard serves the default HTML page with every section
   assert.match(html, /Sprint sync/);
   // Acceptance #5: the page states it derives from persistent state, no model call.
   assert.match(html, /不经过任何模型调用/);
+});
+
+test('dashboard voice panel follows the user voice preference', async () => {
+  const t = testApp();
+  const user = t.userService.createFirstUser({ username: 'voice_user', password: 'secret123' });
+  const lab = t.labService.createLab(user.id, '语音实验室');
+
+  // default: enabled → the 🎤 panel and its inline mic script are rendered
+  const on = await request(t.app).get(`/labs/${lab.id}/dashboard`).set('X-User-Id', user.id);
+  assert.match(on.text, /🎤 语音助手/);
+  assert.match(on.text, /MiniLabVoice/);
+  assert.match(on.text, /getUserMedia/);
+
+  // disabled in the settings voice tab → panel is absent
+  t.userService.updatePreferences(user.id, { voice: { enabled: false } });
+  const off = await request(t.app).get(`/labs/${lab.id}/dashboard`).set('X-User-Id', user.id);
+  assert.doesNotMatch(off.text, /🎤 语音助手/);
+  assert.doesNotMatch(off.text, /MiniLabVoice/);
 });
 
 test('GET /labs/:labId/dashboard returns the same canonical dashboard as JSON (Accept: application/json)', async () => {
@@ -217,13 +237,49 @@ test('GET /labs/:labId/dashboard returns the same canonical dashboard as JSON (A
   assert.equal(alice.specialization, 'working memory', 'persistent identity in the JSON feed (acceptance #4)');
 });
 
-test('GET / serves the dashboard by default (root redirect to the first Lab)', async () => {
+test('GET / renders the Today / Lab Pulse page (four ordered blocks)', async () => {
   const { app, mock } = testApp();
   const world = await createWorld(app, mock);
 
+  // A `review` task (waiting on the PI) so the ⏳ 等待 PI label is exercised.
+  const reviewRes = await request(app)
+    .post(`/projects/${world.projectId}/tasks`)
+    .set('X-User-Id', USER)
+    .send({ title: 'Stakeholder Q&A', assigneeAgentId: world.aliceId });
+  assert.equal(reviewRes.status, 201);
+  const reviewTaskId = reviewRes.body.task.id as string;
+  for (const status of ['ready', 'running', 'review']) {
+    const move = await request(app).patch(`/tasks/${reviewTaskId}`).set('X-User-Id', USER).send({ status });
+    assert.equal(move.status, 200);
+  }
+
   const res = await request(app).get('/').set('X-User-Id', USER);
-  assert.equal(res.status, 302);
-  assert.equal(res.headers.location, `/labs/${world.labId}/dashboard`);
+  assert.equal(res.status, 200);
+  assert.match(String(res.headers['content-type']), /text\/html/);
+
+  const html = res.text;
+  // S1 order: Needs your attention → Lab progress → People → Today schedule.
+  assert.match(html, /需要你关注/);
+  assert.match(html, /实验室进度/);
+  assert.match(html, /谁在干什么/);
+  assert.match(html, /今日安排/);
+  // attention: the blocked + review tasks and the PI question surface.
+  assert.match(html, /Map evidence/);
+  assert.match(html, /阻塞/); // taskStatusLabel('blocked')
+  assert.match(html, /⏳ 等待 PI/); // taskStatusLabel('review') — waiting on the PI
+  assert.match(html, /Stakeholder Q&amp;A/); // & is HTML-escaped
+  assert.match(html, /Should we prioritize individual differences\?/);
+  // lab progress: active project with a derived progress bar.
+  assert.match(html, /WM survey/);
+  assert.match(html, /任务完成/);
+  // people: Alice holds the blocked task → no Doing → idle hint.
+  assert.match(html, /Alice/);
+  assert.match(html, /没有 Doing 任务/);
+  // today schedule: the fixture meeting has no startedAt → nothing scheduled today.
+  assert.match(html, /今天没有组会安排/);
+  // the global sidebar IA is present with Today active.
+  assert.match(html, /class="nav-item active"/);
+  assert.match(html, /\/projects">/);
 });
 
 test('GET / shows a create-your-first-Lab page when the user has no Labs', async () => {
@@ -233,32 +289,46 @@ test('GET / shows a create-your-first-Lab page when the user has no Labs', async
   assert.match(res.text, /欢迎使用 MiniLab/);
 });
 
-test('desktop mode (MINILAB_DESKTOP=1): a plain browser can open the dashboard without x-user-id (exe auto-open fix)', async () => {
+test('desktop mode (MINILAB_DESKTOP=1): a plain browser is served the auth flow, not a JSON 401', async () => {
   process.env.MINILAB_DESKTOP = '1';
   try {
     const { app } = testApp();
-    // 浏览器导航 GET / → 302 到自动创建的起始 Lab 的 dashboard（而非 401）
+    // 浏览器导航 GET / → 302 到登录页（而非 401 / 旧版的自动 local-pi）
     const root = await request(app).get('/').set('Accept', 'text/html');
     assert.equal(root.status, 302);
-    const location = String(root.headers.location);
-    assert.match(location, /^\/labs\/.+\/dashboard$/);
-    // 浏览器随后请求 dashboard 页 → 200 HTML（而非 401 UNAUTHENTICATED）
-    const page = await request(app).get(location).set('Accept', 'text/html');
-    assert.equal(page.status, 200);
-    assert.match(String(page.headers['content-type']), /text\/html/);
-    assert.match(page.text, /我的实验室/);
-    assert.match(page.text, /PI Dashboard/);
+    const loginLocation = String(root.headers.location);
+    assert.match(loginLocation, /^\/auth\/login\?return=/);
+    // users 表为空 → 登录页再 302 到首次设置
+    const setupRedirect = await request(app).get(loginLocation).set('Accept', 'text/html');
+    assert.equal(setupRedirect.status, 302);
+    assert.match(String(setupRedirect.headers.location), /^\/setup$/);
+    // 设置页是可用 HTML（而非 JSON 错误）
+    const setupPage = await request(app).get('/setup').set('Accept', 'text/html');
+    assert.equal(setupPage.status, 200);
+    assert.match(setupPage.text, /欢迎使用 MiniLab/);
   } finally {
     delete process.env.MINILAB_DESKTOP;
   }
 });
 
-test('desktop mode: browser access still enforces Lab ownership (local-pi cannot see another Lab owner)', async () => {
+test('desktop mode: a browser session still cannot open another owner\'s Lab (ownership enforced)', async () => {
   process.env.MINILAB_DESKTOP = '1';
   try {
     const { app, mock } = testApp();
     const world = await createWorld(app, mock);
-    const res = await request(app).get(`/labs/${world.labId}/dashboard`).set('Accept', 'text/html');
+    // 首次设置创建 0 号用户并建立会话（此用户不是 world 的 Lab 所有者）
+    const setup = await request(app)
+      .post('/setup')
+      .set('Accept', 'text/html')
+      .type('form')
+      .send({ username: 'jkl', password: 'secret123', passwordConfirm: 'secret123' });
+    assert.equal(setup.status, 302);
+    const cookie = String(setup.headers['set-cookie']).split(';')[0];
+    // 已登录浏览器仍受 Lab 归属校验约束：看不到另一个所有者的 Lab
+    const res = await request(app)
+      .get(`/labs/${world.labId}/dashboard`)
+      .set('Accept', 'text/html')
+      .set('Cookie', cookie);
     assert.equal(res.status, 403);
   } finally {
     delete process.env.MINILAB_DESKTOP;

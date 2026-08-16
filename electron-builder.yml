@@ -1,0 +1,37 @@
+# electron-builder 打包配置：MiniLab 桌面版（Electron）。
+# 产物输出到 release/（避免与 tsc 的 dist/ 冲突）。
+
+appId: com.minilab.app
+productName: MiniLab
+copyright: MIT License
+
+directories:
+  output: release
+
+# 随应用打包的内容：编译产物（dist/，含 electron/main.js 与全部后端）、品牌资产。
+files:
+  - dist/**
+  - assets/**
+  - package.json
+
+# better-sqlite3 是原生模块：从 asar 解包到 app.asar.unpacked，主进程显式加载。
+asarUnpack:
+  - node_modules/better-sqlite3/**
+
+# electron-builder 在打包时自动把原生模块 rebuild 到 Electron 的 Node ABI。
+npmRebuild: true
+
+win:
+  icon: assets/icon.ico
+  target:
+    - target: nsis
+      arch:
+        - x64
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: MiniLab
+  artifactName: MiniLab-Setup-${version}.${ext}

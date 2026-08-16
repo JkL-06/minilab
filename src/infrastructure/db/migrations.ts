@@ -259,6 +259,28 @@ const MIGRATIONS: Migration[] = [
       CREATE INDEX idx_decisions_project ON decisions (project_id);
     `,
   },
+  {
+    version: 10,
+    name: 'create_users',
+    up: `
+      -- User accounts (multi-user). Owner_user_id on labs is a bare string
+      -- today; the first (0th) user adopts it during first-run setup.
+      CREATE TABLE IF NOT EXISTS users (
+        id            TEXT PRIMARY KEY,
+        username      TEXT NOT NULL UNIQUE,
+        display_name  TEXT,
+        avatar        TEXT,
+        bio           TEXT,
+        role          TEXT NOT NULL DEFAULT 'member',
+        password_hash TEXT NOT NULL,
+        preferences   TEXT NOT NULL DEFAULT '{}',
+        created_at    TEXT NOT NULL,
+        updated_at    TEXT NOT NULL
+      );
+
+      CREATE INDEX idx_users_username ON users (username);
+    `,
+  },
 ];
 
 export function migrate(db: MiniLabDb): void {

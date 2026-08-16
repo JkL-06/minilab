@@ -25,5 +25,15 @@ export function inMemoryLabRepository(): LabRepository & { labs: Lab[] } {
       }
       labs[index] = lab;
     },
+    reassignOwner(fromOwnerUserId: string, toOwnerUserId: string): number {
+      let count = 0;
+      for (const lab of labs) {
+        if (lab.ownerUserId === fromOwnerUserId) {
+          lab.ownerUserId = toOwnerUserId;
+          count += 1;
+        }
+      }
+      return count;
+    },
   };
 }

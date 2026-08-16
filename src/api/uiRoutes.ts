@@ -5,8 +5,19 @@ import type { ApiDeps } from './app';
 import { requireUser } from './auth';
 import { handle } from './handlers';
 import { renderAgentPage, renderMeetingPage, renderProjectPage, type ProjectPageTask } from './uiView';
-import { statusLabel } from './dashboardView';
+import { taskStatusLabel } from './dashboardView';
 import { buildLabMarkdown, labExportFilename, type LabExportData } from './labExportView';
+import {
+  renderActivitiesIndex,
+  renderLabIndex,
+  renderMemoryIndex,
+  renderProjectsIndex,
+  renderTasksPage,
+  type IndexAgentRow,
+  type IndexMeetingRow,
+  type IndexMemoryRow,
+  type IndexProjectRow,
+} from './indexView';
 
 /**
  * Browser UI layer (productization, outside the SPEC pipeline).
@@ -42,10 +53,20 @@ export function uiRouter(deps: ApiDeps): Router {
     memoryService,
     artifactService,
     meetingService,
+    userService,
   } = deps;
 
   const wantsHtml = (req: Request): boolean =>
     String(req.header('accept') ?? '').includes('text/html');
+  /** User theme for `<html data-theme>`. Header-authenticated clients may not
+   *  exist in `users`, so a missing profile silently falls back to system. */
+  const themeOf = (req: Request): string | undefined => {
+    try {
+      return userService.getUser(req.userId).preferences.personalize?.theme;
+    } catch {
+      return undefined;
+    }
+  };
   const dashboardUrl = (labId: string): string => `/labs/${labId}/dashboard`;
   const queryString = (req: Request, key: string): string | null => {
     const v = req.query[key];
@@ -87,8 +108,10 @@ export function uiRouter(deps: ApiDeps): Router {
           tasks,
           artifacts,
           meetings,
+          path: req.path,
           error: queryString(req, 'error'),
           notice: queryString(req, 'notice'),
+          theme: themeOf(req),
         }),
       );
     }),
@@ -103,8 +126,10 @@ export function uiRouter(deps: ApiDeps): Router {
         renderMeetingPage({
           detail,
           lab,
+          path: req.path,
           error: queryString(req, 'error'),
           notice: queryString(req, 'notice'),
+          theme: themeOf(req),
         }),
       );
     }),
@@ -141,6 +166,124 @@ export function uiRouter(deps: ApiDeps): Router {
           runs,
           memories,
           modelConfigs,
+          path: req.path,
+          error: queryString(req, 'error'),
+          notice: queryString(req, 'notice'),
+          theme: themeOf(req),
+        }),
+      );
+    }),
+  );
+
+  // --- Sidebar index pages (S1 IA): thin cross-lab lists over the existing
+  //     per-lab/per-project services (no findAll() repo methods, ADR-0006 #4).
+  //     JSON clients fall through (`gated` → next()) to the per-lab routes. ---
+
+  router.get(
+    '/projects',
+    gated((req, res) => {
+      const rows: IndexProjectRow[] = [];
+      for (const lab of labService.listLabs(req.userId)) {
+        for (const project of projectService.listProjects(req.userId, lab.id)) {
+          rows.push({ labId: lab.id, labName: lab.name, project });
+        }
+      }
+      rows.sort((a, b) => b.project.updatedAt.localeCompare(a.project.updatedAt));
+      res.type('html').send(
+        renderProjectsIndex(rows, {
+          theme: themeOf(req),
+          error: queryString(req, 'error'),
+          notice: queryString(req, 'notice'),
+        }),
+      );
+    }),
+  );
+
+  router.get(
+    '/activities',
+    gated((req, res) => {
+      const rows: IndexMeetingRow[] = [];
+      for (const lab of labService.listLabs(req.userId)) {
+        for (const project of projectService.listProjects(req.userId, lab.id)) {
+          for (const meeting of meetingService.listProjectMeetings(req.userId, project.id)) {
+            rows.push({ labId: lab.id, labName: lab.name, projectId: project.id, projectTitle: project.title, meeting });
+          }
+        }
+      }
+      rows.sort((a, b) => {
+        const aT = a.meeting.startedAt ?? a.meeting.createdAt;
+        const bT = b.meeting.startedAt ?? b.meeting.createdAt;
+        return bT.localeCompare(aT) || b.meeting.id.localeCompare(a.meeting.id);
+      });
+      res.type('html').send(
+        renderActivitiesIndex(rows, {
+          theme: themeOf(req),
+          error: queryString(req, 'error'),
+          notice: queryString(req, 'notice'),
+        }),
+      );
+    }),
+  );
+
+  router.get(
+    '/lab',
+    gated((req, res) => {
+      const rows: IndexAgentRow[] = [];
+      for (const lab of labService.listLabs(req.userId)) {
+        for (const agent of agentService.listAgents(req.userId, lab.id)) {
+          rows.push({ labId: lab.id, labName: lab.name, agent });
+        }
+      }
+      rows.sort((a, b) => a.agent.name.localeCompare(b.agent.name));
+      res.type('html').send(
+        renderLabIndex(rows, {
+          theme: themeOf(req),
+          error: queryString(req, 'error'),
+          notice: queryString(req, 'notice'),
+        }),
+      );
+    }),
+  );
+
+  router.get(
+    '/memory',
+    gated((req, res) => {
+      const rows: IndexMemoryRow[] = [];
+      for (const lab of labService.listLabs(req.userId)) {
+        for (const memory of memoryService.listMemory(req.userId, lab.id)) {
+          rows.push({ labId: lab.id, labName: lab.name, memory });
+        }
+      }
+      rows.sort((a, b) => b.memory.createdAt.localeCompare(a.memory.createdAt));
+      res.type('html').send(
+        renderMemoryIndex(rows, {
+          theme: themeOf(req),
+          error: queryString(req, 'error'),
+          notice: queryString(req, 'notice'),
+        }),
+      );
+    }),
+  );
+
+  // --- Task People View / Kanban (S1 IA). JSON clients fall through to the
+  //     taskRouter's GET /projects/:projectId/tasks — the API contract holds. ---
+
+  router.get(
+    '/projects/:projectId/tasks',
+    gated((req, res) => {
+      const project = projectService.getProject(req.userId, req.params.projectId);
+      const lab = labService.getLab(req.userId, project.labId);
+      const agents = agentService.listAgents(req.userId, project.labId);
+      const tasks = taskService.listTasks(req.userId, project.id);
+      const view: 'people' | 'kanban' = req.query.view === 'kanban' ? 'kanban' : 'people';
+      res.type('html').send(
+        renderTasksPage({
+          project,
+          labName: lab.name,
+          agents,
+          tasks,
+          view,
+          theme: themeOf(req),
           error: queryString(req, 'error'),
           notice: queryString(req, 'notice'),
         }),
@@ -312,7 +455,7 @@ export function uiRouter(deps: ApiDeps): Router {
         status: str(req.body?.status),
       });
       redirectFlash(req, res, `/projects/${task.projectId}`, {
-        notice: `状态已更新为「${statusLabel(task.status)}」`,
+        notice: `状态已更新为「${taskStatusLabel(task.status)}」`,
       });
     }),
   );

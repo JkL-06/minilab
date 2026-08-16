@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import request from 'supertest';
+import { testAuthDeps } from '../support/testAuth';
 
 import { createApp } from '../../src/api/app';
 import { AgentService } from '../../src/application/agentService';
@@ -37,7 +38,7 @@ function testApp() {
   const memoryService = new MemoryService(inMemoryMemoryRepository(), labRepo, agentRepo, projectRepo, new KeywordMemorySearch());
   const meetingService = testMeetingService({ projectRepo, labRepo, agentRepo, taskRepo, artifacts, taskService, memoryService });
   const dashboardService = testDashboardService({ labRepo, agentRepo, projectRepo, taskRepo, artifacts });
-  const app = createApp({ labService, agentService, projectService, taskService, modelConfigService, modelGateway: gateway, agentRuntime: runtime, memoryService, artifactService, meetingService, dashboardService });
+  const app = createApp({ labService, agentService, projectService, taskService, modelConfigService, modelGateway: gateway, agentRuntime: runtime, memoryService, artifactService, meetingService, dashboardService, ...testAuthDeps() });
   return { app, projectService };
 }
 

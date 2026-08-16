@@ -17,8 +17,8 @@ test('migrations apply exactly once and are idempotent', () => {
       };
       assert.equal(
         count.n,
-        9,
-        'nine migrations recorded (labs, agents, projects, tasks, model_configs, agent_runs, memories, artifacts, meetings)',
+        10,
+        'ten migrations recorded (labs, agents, projects, tasks, model_configs, agent_runs, memories, artifacts, meetings, users)',
       );
       const names = (
         db2.prepare('SELECT name FROM schema_migrations ORDER BY version').all() as Array<{
@@ -35,6 +35,7 @@ test('migrations apply exactly once and are idempotent', () => {
         'create_memories',
         'create_artifacts',
         'create_meetings',
+        'create_users',
       ]);
     } finally {
       db2.close();

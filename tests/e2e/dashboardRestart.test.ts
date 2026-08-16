@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import request from 'supertest';
+import { testAuthDeps } from '../support/testAuth';
 
 import { createApp } from '../../src/api/app';
 import { AgentRuntimeService } from '../../src/application/agentRuntimeService';
@@ -97,7 +98,7 @@ function appWith(db: MiniLabDb, dbPath: string) {
     new SqliteDecisionRepository(db),
     new SqliteAgentRunRepository(db),
   );
-  const app = createApp({ labService, agentService, projectService, taskService, modelConfigService, modelGateway, agentRuntime, memoryService, artifactService, meetingService, dashboardService });
+  const app = createApp({ labService, agentService, projectService, taskService, modelConfigService, modelGateway, agentRuntime, memoryService, artifactService, meetingService, dashboardService, ...testAuthDeps() });
   return { app, mock };
 }
 
@@ -105,7 +106,8 @@ const USER = 'user-1';
 
 /**
  * SPEC-010 acceptance criteria end-to-end, across a restart:
- *  1. Opening the Lab (GET /) lands on the dashboard — no empty-prompt interaction.
+ *  1. Opening the app (GET /) lands on the Today / Lab Pulse home page — no
+ *     empty-prompt interaction (S1 IA; the per-Lab dashboard remains a deep link).
  *  2. A blocked Task is visible without opening a chat.
  *  3. A pending PI question is visible.
  *  4. Agents render as persistent identity cards.
@@ -127,10 +129,12 @@ test('acceptance: the PI dashboard reflects canonical state and survives restart
       assert.equal(labRes.status, 201);
       labId = labRes.body.lab.id as string;
 
-      // Acceptance #1: GET / redirects straight to the dashboard.
+      // Acceptance #1: opening the app lands on the Today / Lab Pulse home page
+      // (S1 IA — no empty-prompt interaction; the dashboard is one click away).
       const rootRes = await request(app).get('/').set('X-User-Id', USER);
-      assert.equal(rootRes.status, 302);
-      assert.equal(rootRes.headers.location, `/labs/${labId}/dashboard`);
+      assert.equal(rootRes.status, 200);
+      assert.match(String(rootRes.headers['content-type']), /text\/html/);
+      assert.match(rootRes.text, /需要你关注/);
 
       const aliceRes = await request(app)
         .post(`/labs/${labId}/agents`)
@@ -195,7 +199,7 @@ test('acceptance: the PI dashboard reflects canonical state and survives restart
       assert.equal(htmlRes.status, 200);
       assert.match(String(htmlRes.headers['content-type']), /text\/html/);
       assert.match(htmlRes.text, /Map evidence/);
-      assert.match(htmlRes.text, /受阻/); // #2: the blocked task is visible
+      assert.match(htmlRes.text, /阻塞/); // #2: the blocked task is visible
       assert.match(htmlRes.text, /Should we prioritize individual differences\?/); // #3
       assert.match(htmlRes.text, /data-agent-id="/); // #4: identity cards
       assert.match(htmlRes.text, /持久实验室成员/);
@@ -214,7 +218,7 @@ test('acceptance: the PI dashboard reflects canonical state and survives restart
       // The canonical state survived: project, blocked task, question, artifact.
       assert.match(htmlRes.text, /WM survey/);
       assert.match(htmlRes.text, /Map evidence/);
-      assert.match(htmlRes.text, /受阻/);
+      assert.match(htmlRes.text, /阻塞/);
       assert.match(htmlRes.text, /Should we prioritize individual differences\?/);
       assert.match(htmlRes.text, /Evidence map/);
       assert.match(htmlRes.text, /data-agent-id="/);

@@ -1,126 +1,13 @@
 import { exec } from 'node:child_process';
-import { createApp } from './api/app';
-import { AgentRuntimeService } from './application/agentRuntimeService';
-import { AgentService } from './application/agentService';
-import { ArtifactService } from './application/artifactService';
-import { DashboardService } from './application/dashboardService';
-import { LabService } from './application/labService';
-import { MeetingService } from './application/meetingService';
-import { MemoryService } from './application/memoryService';
-import { KeywordMemorySearch } from './application/memorySearch';
-import { ModelConfigService } from './application/modelConfigService';
-import { ModelGatewayService } from './application/modelGateway';
-import { ProjectService } from './application/projectService';
-import { TaskService } from './application/taskService';
-import { openDatabase } from './infrastructure/db/database';
-import { SqliteAgentRepository } from './infrastructure/db/sqliteAgentRepository';
-import { SqliteAgentRunRepository } from './infrastructure/db/sqliteAgentRunRepository';
-import { SqliteArtifactRepository } from './infrastructure/db/sqliteArtifactRepository';
-import { SqliteDecisionRepository } from './infrastructure/db/sqliteDecisionRepository';
-import { SqliteLabRepository } from './infrastructure/db/sqliteLabRepository';
-import { SqliteMeetingRepository } from './infrastructure/db/sqliteMeetingRepository';
-import { SqliteMemoryRepository } from './infrastructure/db/sqliteMemoryRepository';
-import { SqliteModelConfigRepository } from './infrastructure/db/sqliteModelConfigRepository';
-import { SqliteProjectRepository } from './infrastructure/db/sqliteProjectRepository';
-import { SqliteTaskRepository } from './infrastructure/db/sqliteTaskRepository';
-import { OpenAICompatibleAdapter } from './infrastructure/models/adapters/openAiCompatibleAdapter';
-import { MockProviderAdapter } from './infrastructure/models/adapters/mockProviderAdapter';
-import { getOrCreateCredentialCipher } from './infrastructure/models/credentialCipher';
 
-const port = Number(process.env.PORT ?? 3000);
-// 默认只绑 127.0.0.1：本地单机工具不该被局域网里的其它设备访问（认证是无信任的
-// X-User-Id 头，绑定到所有网卡等于把 PI 的实验室数据暴露给邻居）。需要对外暴露
-// 时显式设 HOST=0.0.0.0（或 --host 0.0.0.0）。
-const host = process.env.HOST ?? '127.0.0.1';
-const databasePath = process.env.DATABASE_PATH ?? './data/minilab.db';
+import { createMiniLabApp } from './createMiniLabApp';
 
-// 产品承诺「打开网页即是 PI 仪表盘」：默认允许普通浏览器（Accept 含 text/html、
-// 无 x-user-id 头）以本地单机用户 local-pi 访问 dashboard（见 src/api/auth.ts 的
-// desktopBrowserFallback），可显式设 MINILAB_DESKTOP=0 关闭。API/JSON 客户端不受
-// 影响，依旧必须携带 x-user-id（SPEC-001 契约不变）。
-if (process.env.MINILAB_DESKTOP !== '0') process.env.MINILAB_DESKTOP = '1';
-
-const db = openDatabase(databasePath);
-const labRepository = new SqliteLabRepository(db);
-const agentRepository = new SqliteAgentRepository(db);
-const projectRepository = new SqliteProjectRepository(db);
-const labService = new LabService(labRepository);
-const agentService = new AgentService(agentRepository, labRepository);
-const projectService = new ProjectService(projectRepository, labRepository);
-const taskService = new TaskService(
-  new SqliteTaskRepository(db),
-  projectRepository,
-  agentRepository,
-  labRepository,
-);
-const modelConfigService = new ModelConfigService(
-  new SqliteModelConfigRepository(db),
-  labRepository,
-  getOrCreateCredentialCipher(process.env.MODEL_GATEWAY_KEY, `${databasePath}.key`),
-);
-const modelTimeoutMs = Number(process.env.MINILAB_MODEL_TIMEOUT_MS ?? 120_000);
-const modelGateway = new ModelGatewayService({
-  openai_compatible: new OpenAICompatibleAdapter(Number.isFinite(modelTimeoutMs) ? modelTimeoutMs : 120_000),
-  mock: new MockProviderAdapter(),
-});
-const memoryService = new MemoryService(
-  new SqliteMemoryRepository(db),
-  labRepository,
-  agentRepository,
-  projectRepository,
-  new KeywordMemorySearch(),
-);
-const artifactService = new ArtifactService(
-  new SqliteArtifactRepository(db),
-  projectRepository,
-  labRepository,
-);
-const meetingService = new MeetingService(
-  new SqliteMeetingRepository(db),
-  new SqliteDecisionRepository(db),
-  projectRepository,
-  labRepository,
-  agentRepository,
-  new SqliteTaskRepository(db),
-  new SqliteArtifactRepository(db),
-  taskService,
-  memoryService,
-);
-const agentRuntime = new AgentRuntimeService(
-  agentRepository,
-  labRepository,
-  projectRepository,
-  new SqliteTaskRepository(db),
-  taskService,
-  modelConfigService,
-  modelGateway,
-  new SqliteAgentRunRepository(db),
-  memoryService,
-  artifactService,
-);
-const dashboardService = new DashboardService(
-  labRepository,
-  agentRepository,
-  projectRepository,
-  new SqliteTaskRepository(db),
-  new SqliteArtifactRepository(db),
-  new SqliteMeetingRepository(db),
-  new SqliteDecisionRepository(db),
-  new SqliteAgentRunRepository(db),
-);
-const app = createApp({
-  labService,
-  agentService,
-  projectService,
-  taskService,
-  modelConfigService,
-  modelGateway,
-  agentRuntime,
-  memoryService,
-  artifactService,
-  meetingService,
-  dashboardService,
-});
+/**
+ * CLI 入口（npm start / node dist/src/server.js）：装配 → 监听 → （桌面版）开浏览器。
+ * 装配逻辑见 createMiniLabApp —— Electron 主进程（electron/main.ts）复用同一装配，
+ * 只是改由自己的窗口加载 URL。
+ */
+const { app, port, host, databasePath } = createMiniLabApp();
 
 app.listen(port, host, () => {
   console.log(`MiniLab API listening on http://${host}:${port}`);

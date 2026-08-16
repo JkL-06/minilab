@@ -231,3 +231,46 @@ export class AgentRunSchemaError extends DomainError {
     this.name = 'AgentRunSchemaError';
   }
 }
+
+// --- User (multi-user accounts) ---
+
+export class UserValidationError extends ValidationError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'UserValidationError';
+  }
+}
+
+export class UserNotFoundError extends NotFoundError {
+  constructor(public readonly userId: string) {
+    super(userId, `User not found: ${userId}`);
+    this.name = 'UserNotFoundError';
+  }
+}
+
+/** Login failed (unknown username or wrong password). Never distinguishes which. */
+export class AuthenticationError extends DomainError {
+  constructor() {
+    super('Invalid username or password');
+    this.name = 'AuthenticationError';
+  }
+}
+
+export class PasswordValidationError extends ValidationError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'PasswordValidationError';
+  }
+}
+
+// --- Voice (ASR / TTS) ---
+
+export class VoiceError extends DomainError {
+  constructor(
+    public readonly category: 'authentication' | 'invalid_request' | 'provider_unavailable' | 'connection_failed' | 'unknown',
+    message: string,
+  ) {
+    super(message);
+    this.name = 'VoiceError';
+  }
+}

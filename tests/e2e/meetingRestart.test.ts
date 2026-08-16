@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import request from 'supertest';
+import { testAuthDeps } from '../support/testAuth';
 
 import { createApp } from '../../src/api/app';
 import { AgentRuntimeService } from '../../src/application/agentRuntimeService';
@@ -95,7 +96,7 @@ function appWith(db: MiniLabDb, dbPath: string) {
     new SqliteDecisionRepository(db),
     new SqliteAgentRunRepository(db),
   );
-  return createApp({ labService, agentService, projectService, taskService, modelConfigService, modelGateway, agentRuntime, memoryService, artifactService, meetingService, dashboardService });
+  return createApp({ labService, agentService, projectService, taskService, modelConfigService, modelGateway, agentRuntime, memoryService, artifactService, meetingService, dashboardService, ...testAuthDeps() });
 }
 
 const USER = 'user-1';

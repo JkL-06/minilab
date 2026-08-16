@@ -6,8 +6,8 @@ MiniLab 的官方下载与安装落地页（`index.html`）——零依赖的纯
 - **线上地址**：https://JkL-06.github.io/minilab/ （GitHub Pages，源 = `gh-pages` 分支）
 - **代码仓库**：https://github.com/JkL-06/minilab
 - **npm 包**：https://www.npmjs.com/package/minilab （`npx minilab` 一行安装）
-- **Windows 桌面版**：https://github.com/JkL-06/minilab/releases/download/v0.2.1/MiniLab.exe
-  （GitHub Release `v0.2.1`，单文件免装 Node.js，双击即用）
+- **Windows 桌面版**：https://github.com/JkL-06/minilab/releases/download/v0.3.0/MiniLab.exe
+  （GitHub Release `v0.3.0`，单文件免装 Node.js，双击即用）
 
 ## 目录
 
@@ -22,11 +22,11 @@ MiniLab 的官方下载与安装落地页（`index.html`）——零依赖的纯
 
 ```js
 const CONFIG = {
-  version: 'v0.2.1',
+  version: 'v0.3.0',
   repoUrl: 'https://github.com/JkL-06/minilab',                          // 代码仓库
   zipUrl: 'https://github.com/JkL-06/minilab/archive/refs/heads/main.zip', // 直接下载 ZIP
   npmUrl: 'https://www.npmjs.com/package/minilab',                       // npm 页面（npx minilab）
-  exeUrl: 'https://github.com/JkL-06/minilab/releases/download/v0.2.1/MiniLab.exe', // 桌面版 exe
+  exeUrl: 'https://github.com/JkL-06/minilab/releases/download/v0.3.0/MiniLab.exe', // 桌面版 exe
 };
 ```
 
@@ -91,9 +91,17 @@ npx serve .        # → http://localhost:5000
     「更多信息 → 仍要运行」。
   - 发新版：`npm run build:exe` → 建 Release 标签 → 上传资产（同名替换：先删旧资产再传）
     → 更新本文件与 `index.html` 的 `CONFIG.exeUrl` 与尺寸文案。
+- **Electron 桌面版 (NSIS)**：`npm run electron:pack` 产出 `release/MiniLab-Setup-<version>.exe`
+  安装包（`electron:rebuild` 先切原生模块到 Electron ABI，打包完 `electron:restore` 切回
+  Node ABI 供测试）。
+  - ⚠️ `electron-builder` 在 npm 10 下会因 `@noble/hashes@2.x`（ESM-only）被 `app-builder-lib`
+    用 CJS `require()` 而报 `ERR_REQUIRE_ESM`（blockmap 生成阶段）。已在 package.json 加
+    `overrides` 把 `@noble/hashes` 固定到 1.8.0（CJS 版）；若 node_modules 里仍冒出嵌套 2.x，
+    删 `node_modules/app-builder-lib/node_modules/@noble` 再 `npm install`。
+  - 验证顺序：`npm test` 全绿 → `electron:rebuild` → `electron:pack` → `electron:restore`。
 - **Cloudflare Pages / Netlify**：拖拽上传整个 `website/` 目录即得 HTTPS 域名，与 GitHub Pages 可并存。
-- **npm 分发（已上线）**：`minilab@0.2.1` 已发布到 npm，任何机器装好 Node.js 20+ 后运行
-  `npx minilab` 即可启动。发布流程：`npm publish`（`prepublishOnly` 会自动先构建 + 跑 383 项测试）。
+- **npm 分发（已上线）**：`minilab@0.3.0` 已发布到 npm，任何机器装好 Node.js 20+ 后运行
+  `npx minilab` 即可启动。发布流程：`npm publish`（`prepublishOnly` 会自动先构建 + 跑 434 项测试）。
   ⚠️ 发布前 npm 账号需开启 2FA，并生成 **Granular Access Token**：Package access = **All packages**、
   Permissions = **Read and write**、勾选 **Bypass 2FA**——否则 `npm publish` 返回 403。
 
@@ -101,4 +109,4 @@ npx serve .        # → http://localhost:5000
 
 - 开发包 `MiniLab-Development-Pack-v0.1/`、`data/`、`node_modules/`、`dist/`、`.claude/`、
   `*.key` 都在仓库 `.gitignore` 中，**不会**随公开仓库发布。
-- 网站文案里的测试数（383）、SPEC 编号、端口（3000）请随仓库实际状态更新。
+- 网站文案里的测试数（434）、SPEC 编号、端口（3000）请随仓库实际状态更新。

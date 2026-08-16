@@ -1,7 +1,13 @@
 import type { NextFunction, Request, Response } from 'express';
 import { ZodError } from 'zod';
 
-import { ForbiddenError, ModelGatewayError, NotFoundError, ValidationError } from '../domain/errors';
+import {
+  ForbiddenError,
+  ModelGatewayError,
+  NotFoundError,
+  ValidationError,
+  VoiceError,
+} from '../domain/errors';
 
 /**
  * Maps domain and validation errors to stable HTTP error codes
@@ -29,6 +35,14 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
   }
   if (err instanceof ValidationError) {
     res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: err.message } });
+    return;
+  }
+  if (err instanceof VoiceError) {
+    const status =
+      err.category === 'authentication' ? 401 : err.category === 'invalid_request' ? 400 : 502;
+    res.status(status).json({
+      error: { code: 'VOICE_ERROR', category: err.category, message: err.message },
+    });
     return;
   }
   if (err instanceof NotFoundError) {

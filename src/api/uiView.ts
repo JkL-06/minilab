@@ -7,7 +7,14 @@ import type { Memory } from '../domain/memory';
 import type { Project } from '../domain/project';
 import type { Task } from '../domain/task';
 import { TASK_STATUS_TRANSITIONS } from '../domain/task';
-import { escapeHtml, stageLabel, statusLabel, priorityLabel } from './dashboardView';
+import {
+  escapeHtml,
+  stageLabel,
+  statusLabel,
+  taskStatusLabel,
+  priorityLabel,
+  appFrame,
+} from './uiTheme';
 
 /**
  * Server-rendered detail pages for the browser UI layer (productization, outside
@@ -27,94 +34,26 @@ import { escapeHtml, stageLabel, statusLabel, priorityLabel } from './dashboardV
 export interface PageOptions {
   title: string;
   labName: string | null;
+  /** Request path — picks the active sidebar entry (shared app frame). */
+  path: string;
   error?: string | null;
   notice?: string | null;
+  /** Preferred theme (light|dark|system) from the user's personalization prefs. */
+  theme?: string;
   body: string;
 }
 
-const SHELL_CSS = `
-  :root { color-scheme: light dark; }
-  * { box-sizing: border-box; }
-  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; line-height: 1.5; background: #f4f6f9; color: #1c2333; }
-  header.top { background: #0f1b2d; color: #fff; padding: 0.9rem 1.5rem; display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; }
-  header.top a.brand { color: #fff; text-decoration: none; font-weight: 700; }
-  header.top .crumb { opacity: 0.7; font-size: 0.9rem; }
-  main { max-width: 1080px; margin: 0 auto; padding: 1.25rem 1.5rem 3rem; }
-  .flash { padding: 0.6rem 1rem; border-radius: 8px; margin: 0.75rem 0; font-size: 0.92rem; }
-  .flash.error { background: #fdecea; color: #b3261e; border: 1px solid #f5c6c0; }
-  .flash.ok { background: #e6f6ec; color: #1a7f45; border: 1px solid #bfe6cd; }
-  section.panel { background: #fff; border: 1px solid #e2e6ee; border-radius: 10px; padding: 1rem 1.25rem; margin: 1rem 0; }
-  section.panel h2 { margin: 0 0 0.75rem; font-size: 1.05rem; }
-  ul { margin: 0; padding: 0; list-style: none; }
-  li { padding: 0.4rem 0; border-bottom: 1px solid #eef1f6; }
-  li:last-child { border-bottom: none; }
-  li.empty { color: #6b7a90; font-style: italic; }
-  .muted { color: #6b7a90; }
-  table { width: 100%; border-collapse: collapse; }
-  th, td { text-align: left; padding: 0.45rem 0.5rem; border-bottom: 1px solid #eef1f6; vertical-align: top; }
-  th { color: #6b7a90; font-weight: 600; font-size: 0.85rem; }
-  .badge { display: inline-block; padding: 0.08rem 0.5rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; margin-right: 0.35rem; }
-  .status-blocked, .status-review, .status-running, .status-failed { background: #fdecea; color: #b3261e; }
-  .status-active, .status-in_progress, .status-ready, .status-retryable, .status-scheduled { background: #e7f3ff; color: #0b5cad; }
-  .status-completed, .status-succeeded { background: #e6f6ec; color: #1a7f45; }
-  .status-planned, .status-backlog, .status-paused, .status-cancelled, .status-inactive, .status-archived { background: #eef1f6; color: #5a6a80; }
-  a { color: #0b5cad; }
-  .btn { display: inline-block; background: #0b5cad; color: #fff; border: 0; border-radius: 8px; padding: 0.45rem 0.9rem; font-size: 0.88rem; cursor: pointer; text-decoration: none; }
-  .btn:hover { background: #094a8f; }
-  .btn.ghost { background: transparent; color: #0b5cad; border: 1px solid #0b5cad; }
-  .btn.danger { background: #b3261e; }
-  .btn.sm { padding: 0.25rem 0.6rem; font-size: 0.8rem; }
-  form.field { display: grid; grid-template-columns: 130px 1fr; gap: 0.55rem 0.8rem; align-items: center; margin: 0.5rem 0; }
-  form.field label { font-size: 0.88rem; color: #46536b; }
-  form.field input[type="text"], form.field input[type="url"], form.field input[type="password"], form.field textarea, form.field select { width: 100%; padding: 0.45rem 0.6rem; border: 1px solid #c9d2e0; border-radius: 8px; font: inherit; }
-  form.field textarea { min-height: 3.2rem; resize: vertical; }
-  form.field .actions { grid-column: 2; }
-  .checks { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; }
-  .checks label { font-size: 0.9rem; }
-  .inline-form { display: inline-block; margin: 0; }
-  .inline-form select, .inline-form input[type="text"] { padding: 0.25rem 0.45rem; border: 1px solid #c9d2e0; border-radius: 6px; font-size: 0.8rem; }
-  .run-form { display: inline-flex; gap: 0.4rem; align-items: center; }
-  .run-form input[type="text"] { padding: 0.25rem 0.45rem; border: 1px solid #c9d2e0; border-radius: 6px; font-size: 0.8rem; width: 12rem; }
-  pre.content { white-space: pre-wrap; word-break: break-word; background: #f7f9fc; border: 1px solid #e6eaf1; border-radius: 8px; padding: 0.6rem 0.8rem; font-size: 0.85rem; margin: 0.4rem 0; }
-  .avatar { display: inline-flex; width: 26px; height: 26px; border-radius: 50%; background: #0b5cad; color: #fff; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; margin-right: 0.4rem; }
-  .meta-line { color: #6b7a90; font-size: 0.85rem; margin: 0.2rem 0; }
-  footer { text-align: center; color: #8a94a6; font-size: 0.8rem; margin-top: 2rem; }
-  @media (prefers-color-scheme: dark) {
-    body { background: #131a26; color: #e6eaf2; }
-    section.panel { background: #1b2436; border-color: #2a3550; }
-    li, th, td { border-color: #2a3550; }
-    .muted, th { color: #8a94a6; }
-    .status-planned, .status-backlog, .status-paused, .status-cancelled, .status-inactive, .status-archived { background: #2a3550; color: #b7c1d4; }
-    .status-blocked, .status-review, .status-running, .status-failed { background: #4a2421; color: #ffb4a8; }
-    .status-active, .status-in_progress, .status-ready, .status-retryable, .status-scheduled { background: #1b2f4d; color: #a8c8ef; }
-    .status-completed, .status-succeeded { background: #1c3a2a; color: #9fd8b5; }
-    pre.content { background: #141c2b; border-color: #2a3550; }
-    form.field input[type="text"], form.field input[type="url"], form.field input[type="password"], form.field textarea, form.field select, .inline-form select, .inline-form input[type="text"], .run-form input[type="text"] { background: #131a26; color: #e6eaf2; border-color: #2a3550; }
-  }
-`;
-
 export function pageShell(o: PageOptions): string {
-  return `<!doctype html>
-<html lang="zh-CN">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>${escapeHtml(o.title)} · MiniLab</title>
-<style>${SHELL_CSS}</style>
-</head>
-<body>
-<header class="top">
-  <a class="brand" href="/">🏛 ${escapeHtml(o.labName ?? 'MiniLab')}</a>
-  <span class="crumb">/ ${escapeHtml(o.title)}</span>
-</header>
-<main>
-  ${o.error ? `<div class="flash error">⚠ ${escapeHtml(o.error)}</div>` : ''}
-  ${o.notice ? `<div class="flash ok">✓ ${escapeHtml(o.notice)}</div>` : ''}
-  ${o.body}
-</main>
-<footer>MiniLab · 本地持久化 AI 科研实验室</footer>
-</body>
-</html>`;
+  return appFrame({
+    crumb: o.title,
+    docTitle: `${o.title} · MiniLab`,
+    labName: o.labName,
+    path: o.path,
+    error: o.error ?? null,
+    notice: o.notice ?? null,
+    theme: o.theme,
+    body: o.body,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -132,8 +71,10 @@ export interface ProjectPageData {
   tasks: ProjectPageTask[];
   artifacts: Artifact[];
   meetings: Meeting[];
+  path: string;
   error?: string | null;
   notice?: string | null;
+  theme?: string;
 }
 
 const TERMINAL_TASK_STATUSES: readonly string[] = ['completed', 'cancelled'];
@@ -145,7 +86,7 @@ export function renderProjectPage(data: ProjectPageData): string {
     .map((t) => {
       const nextOptions = TASK_STATUS_TRANSITIONS[t.status]
         .filter((s) => s !== t.status)
-        .map((s) => `<option value="${s}">${statusLabel(s)}</option>`)
+        .map((s) => `<option value="${s}">${taskStatusLabel(s)}</option>`)
         .join('');
       const isTerminal = TERMINAL_TASK_STATUSES.includes(t.status);
       const runControl = isTerminal
@@ -166,7 +107,7 @@ export function renderProjectPage(data: ProjectPageData): string {
           ${t.description ? `<div class="muted">${escapeHtml(t.description)}</div>` : ''}
           <div class="meta-line">派给 ${escapeHtml(t.agentName)} · ${priorityLabel(t.priority)}优先级 · 更新于 ${escapeHtml(t.updatedAt.slice(0, 19).replace('T', ' '))}</div>
         </td>
-        <td><span class="badge status-${escapeHtml(t.status)}">${statusLabel(t.status)}</span></td>
+        <td><span class="badge status-${escapeHtml(t.status)}">${taskStatusLabel(t.status)}</span></td>
         <td>${runControl}</td>
       </tr>`;
     })
@@ -266,8 +207,10 @@ export function renderProjectPage(data: ProjectPageData): string {
   return pageShell({
     title: project.title,
     labName: lab.name,
+    path: data.path,
     error: data.error ?? null,
     notice: data.notice ?? null,
+    theme: data.theme,
     body,
   });
 }
@@ -279,8 +222,10 @@ export function renderProjectPage(data: ProjectPageData): string {
 export interface MeetingPageData {
   detail: MeetingDetail;
   lab: { id: string; name: string };
+  path: string;
   error?: string | null;
   notice?: string | null;
+  theme?: string;
 }
 
 export function renderMeetingPage(data: MeetingPageData): string {
@@ -401,8 +346,10 @@ export function renderMeetingPage(data: MeetingPageData): string {
   return pageShell({
     title: meeting.title,
     labName: lab.name,
+    path: data.path,
     error: data.error ?? null,
     notice: data.notice ?? null,
+    theme: data.theme,
     body,
   });
 }
@@ -418,8 +365,10 @@ export interface AgentPageData {
   runs: AgentRun[];
   memories: Memory[];
   modelConfigs: Array<{ id: string; name: string; model: string; provider: string }>;
+  path: string;
   error?: string | null;
   notice?: string | null;
+  theme?: string;
 }
 
 function runStatusLabel(status: string): string {
@@ -437,7 +386,7 @@ export function renderAgentPage(data: AgentPageData): string {
   const taskRows = data.tasks
     .map(
       (t) => `<li>
-        <span class="badge status-${escapeHtml(t.status)}">${statusLabel(t.status)}</span>
+        <span class="badge status-${escapeHtml(t.status)}">${taskStatusLabel(t.status)}</span>
         <a href="/projects/${escapeHtml(t.projectId)}#task-${escapeHtml(t.id)}">${escapeHtml(t.title)}</a>
         <span class="muted">· ${escapeHtml(t.projectTitle)} · 更新于 ${escapeHtml(t.updatedAt.slice(0, 19).replace('T', ' '))}</span>
       </li>`,
@@ -526,8 +475,10 @@ export function renderAgentPage(data: AgentPageData): string {
   return pageShell({
     title: agent.name,
     labName: lab.name,
+    path: data.path,
     error: data.error ?? null,
     notice: data.notice ?? null,
+    theme: data.theme,
     body,
   });
 }

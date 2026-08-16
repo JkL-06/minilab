@@ -1,4 +1,12 @@
 import type { LabDashboard } from '../application/dashboardService';
+import {
+  escapeHtml,
+  stageLabel,
+  statusLabel,
+  taskStatusLabel,
+  priorityLabel,
+  appFrame,
+} from './uiTheme';
 
 /**
  * SPEC-010 UI layer (ADR-0006 #3): renders the LabDashboard as a server-side
@@ -11,61 +19,13 @@ import type { LabDashboard } from '../application/dashboardService';
  * #1), and renders each Agent as a persistent identity card — never as a chat
  * message — which is what makes an Agent visually distinct from a temporary chat
  * participant (acceptance #4).
+ *
+ * Styling is shared with the detail pages via `uiTheme` (brand header, favicon,
+ * design-system CSS), so the whole product surface stays visually consistent.
  */
 
-/** Escapes user-authored text for safe HTML embedding. */
-export function escapeHtml(value: string | number | null | undefined): string {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-export function stageLabel(stage: string): string {
-  const labels: Record<string, string> = {
-    explore: '探索',
-    survey: '综述',
-    ideate: '构思',
-    validate: '验证',
-    develop: '开发',
-    analyze: '分析',
-    write: '撰写',
-    submit: '提交',
-    revise: '修订',
-  };
-  return labels[stage] ?? stage;
-}
-
-export function statusLabel(status: string): string {
-  const labels: Record<string, string> = {
-    planned: '计划中',
-    active: '进行中',
-    blocked: '受阻',
-    paused: '暂停',
-    completed: '已完成',
-    archived: '已归档',
-    backlog: '待办',
-    ready: '就绪',
-    running: '执行中',
-    review: '待审核',
-    cancelled: '已取消',
-    scheduled: '已排期',
-    in_progress: '进行中',
-  };
-  return labels[status] ?? status;
-}
-
-export function priorityLabel(priority: string): string {
-  const labels: Record<string, string> = {
-    urgent: '紧急',
-    high: '高',
-    medium: '中',
-    low: '低',
-  };
-  return labels[priority] ?? priority;
-}
+// Re-exported so existing importers (uiView, uiRoutes) keep working.
+export { escapeHtml, stageLabel, statusLabel, taskStatusLabel, priorityLabel } from './uiTheme';
 
 export interface DashboardModelConfig {
   id: string;
@@ -78,12 +38,20 @@ export interface DashboardModelConfig {
 
 export function renderDashboardPage(
   dashboard: LabDashboard,
-  extra?: { modelConfigs?: DashboardModelConfig[]; error?: string | null; notice?: string | null },
+  extra?: {
+    modelConfigs?: DashboardModelConfig[];
+    error?: string | null;
+    notice?: string | null;
+    theme?: string;
+    /** Whether the settings 语音 tab has voice enabled (dashboard buttons). */
+    voiceEnabled?: boolean;
+  },
 ): string {
   const { lab } = dashboard;
   const modelConfigs = extra?.modelConfigs ?? [];
   const error = extra?.error ?? null;
   const notice = extra?.notice ?? null;
+  const voiceEnabled = extra?.voiceEnabled ?? true;
 
   const projectRows = dashboard.projects
     .map(
@@ -104,7 +72,7 @@ export function renderDashboardPage(
           : agent.currentTasks
               .map(
                 (t) => `<li>
-                  <span class="badge status-${escapeHtml(t.status)}">${statusLabel(t.status)}</span>
+                  <span class="badge status-${escapeHtml(t.status)}">${taskStatusLabel(t.status)}</span>
                   ${escapeHtml(t.title)}
                   <span class="muted">· ${escapeHtml(t.projectTitle)}</span>
                 </li>`,
@@ -130,7 +98,7 @@ export function renderDashboardPage(
       : dashboard.attentionTasks
           .map(
             (t) => `<li>
-              <span class="badge status-${escapeHtml(t.status)}">${statusLabel(t.status)}</span>
+              <span class="badge status-${escapeHtml(t.status)}">${taskStatusLabel(t.status)}</span>
               <strong>${escapeHtml(t.title)}</strong>
               <span class="muted">· ${escapeHtml(t.projectTitle)} · 指派给 ${escapeHtml(t.assigneeName)} · ${priorityLabel(t.priority)}优先级</span>
             </li>`,
@@ -204,175 +172,223 @@ export function renderDashboardPage(
       ? '<p class="flash error">⚠ 成员还没有可用的模型配置 —— 先连接一个模型（用 mock 可零成本试玩），再指派给成员，否则任务无法执行。</p>'
       : '';
 
-  return `<!doctype html>
-<html lang="zh-CN">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>${escapeHtml(lab.name)} · PI Dashboard</title>
-<style>
-  :root { color-scheme: light dark; }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
-    line-height: 1.5;
-    background: #f4f6f9;
-    color: #1c2333;
+  // KPI cards — a glanceable read of the Lab's current state (no LLM call).
+  const statCards = [
+    { label: '成员', num: dashboard.agents.length, extra: '持久身份' },
+    { label: '进行中项目', num: dashboard.projects.length, extra: 'projects' },
+    { label: '需要关注', num: dashboard.attentionTasks.length, extra: '任务' },
+    { label: '模型配置', num: modelConfigs.length, extra: 'configs' },
+  ]
+    .map(
+      (s) => `<div class="stat-card"><div class="stat-num">${s.num}</div><div class="stat-label">${s.label}</div><div class="stat-extra">${s.extra}</div></div>`,
+    )
+    .join('');
+
+  // 语音面板（🎤 录音转写 / 🔊 文字朗读）。这是全站唯一的内联 JS —— 服务端纯
+  // SSR 架构下，麦克风采集只能靠浏览器 API，故最小侵入地内联一个小脚本。语音由
+  // DashScope 提供，密钥在服务端复用「配置」分区的模型配置，浏览器不接触 key。
+  const voicePanel = voiceEnabled
+    ? `<section class="panel" id="voice-panel">
+    <h2>🎤 语音助手</h2>
+    <p class="muted">录制语音转文字（ASR），或输入文字朗读（TTS）。语音密钥复用「配置」分区的 DashScope 模型；在 设置 → 语音 可关闭本面板。</p>
+    <form class="field" onsubmit="return false;">
+      <label for="voiceText">文字</label>
+      <textarea id="voiceText" maxlength="5000" placeholder="输入要朗读的文字；点击「开始录音」后，识别结果会自动填入此处…"></textarea>
+      <div class="actions voice-actions">
+        <button class="btn" type="button" onclick="MiniLabVoice.speak()">🔊 朗读</button>
+        <button class="btn" type="button" id="voiceRecord" onclick="MiniLabVoice.toggle()">🎤 开始录音</button>
+        <span class="voice-status muted" id="voiceStatus"></span>
+      </div>
+      <audio id="voiceAudio" controls preload="none" style="display:none"></audio>
+    </form>
+  </section>`
+    : '';
+
+  const voiceScript = voiceEnabled
+    ? `<script>
+(function () {
+  var LAB_ID = ${JSON.stringify(lab.id)};
+  var $ = function (id) { return document.getElementById(id); };
+  var setStatus = function (msg, err) {
+    var el = $('voiceStatus');
+    el.textContent = msg;
+    el.className = 'voice-status' + (err ? ' voice-err' : ' muted');
+  };
+  var mediaRec = null;
+  var chunks = [];
+
+  function speak() {
+    var text = $('voiceText').value.trim();
+    if (!text) { setStatus('先输入或录一段文字'); return; }
+    setStatus('正在合成语音…');
+    fetch('/api/voice/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ labId: LAB_ID, text: text })
+    }).then(function (res) {
+      if (!res.ok) { return res.json().catch(function () { return {}; }).then(function (e) { throw new Error(e.error && e.error.message || '合成失败'); }); }
+      return res.blob();
+    }).then(function (blob) {
+      var audio = $('voiceAudio');
+      audio.src = URL.createObjectURL(blob);
+      audio.style.display = 'block';
+      audio.play().catch(function () {});
+      setStatus('朗读完成');
+    }).catch(function (err) { setStatus(err.message, true); });
   }
-  header.top { background: #0f1b2d; color: #fff; padding: 1.25rem 1.5rem; }
-  header.top h1 { margin: 0; font-size: 1.3rem; }
-  header.top p { margin: 0.3rem 0 0; opacity: 0.75; font-size: 0.9rem; }
-  main { max-width: 1080px; margin: 0 auto; padding: 1.25rem 1.5rem 3rem; }
-  section.panel {
-    background: #fff;
-    border: 1px solid #e2e6ee;
-    border-radius: 10px;
-    padding: 1rem 1.25rem;
-    margin: 1rem 0;
+
+  function stopRecording() {
+    if (!mediaRec) return;
+    mediaRec.stop();
+    mediaRec = null;
+    $('voiceRecord').textContent = '🎤 开始录音';
   }
-  section.panel h2 { margin: 0 0 0.75rem; font-size: 1.05rem; }
-  ul { margin: 0; padding: 0; list-style: none; }
-  li { padding: 0.4rem 0; border-bottom: 1px solid #eef1f6; }
-  li:last-child { border-bottom: none; }
-  li.empty { color: #6b7a90; font-style: italic; }
-  .muted { color: #6b7a90; }
-  table { width: 100%; border-collapse: collapse; }
-  th, td { text-align: left; padding: 0.45rem 0.5rem; border-bottom: 1px solid #eef1f6; }
-  th { color: #6b7a90; font-weight: 600; font-size: 0.85rem; }
-  .badge {
-    display: inline-block;
-    padding: 0.08rem 0.5rem;
-    border-radius: 999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    margin-right: 0.35rem;
+
+  function toggle() {
+    if (mediaRec) { stopRecording(); return; }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setStatus('当前环境不支持麦克风', true);
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+      chunks = [];
+      mediaRec = new MediaRecorder(stream);
+      mediaRec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
+      mediaRec.onstop = function () {
+        stream.getTracks().forEach(function (t) { t.stop(); });
+        var blob = new Blob(chunks, { type: mediaRec.mimeType || 'audio/webm' });
+        setStatus('正在识别…');
+        fetch('/api/voice/asr?labId=' + encodeURIComponent(LAB_ID), {
+          method: 'POST',
+          headers: { 'Content-Type': blob.type },
+          body: blob
+        }).then(function (res) {
+          if (!res.ok) { return res.json().catch(function () { return {}; }).then(function (e) { throw new Error(e.error && e.error.message || '识别失败'); }); }
+          return res.json();
+        }).then(function (data) {
+          if (data.text) $('voiceText').value = data.text;
+          setStatus('识别完成，已填入文本框');
+        }).catch(function (err) { setStatus(err.message, true); });
+      };
+      mediaRec.start();
+      $('voiceRecord').textContent = '⏹ 停止录音';
+      setStatus('正在录音…');
+    }).catch(function (err) {
+      setStatus('无法访问麦克风：' + (err && err.message || err), true);
+    });
   }
-  .status-blocked, .status-review, .status-running { background: #fdecea; color: #b3261e; }
-  .status-active, .status-in_progress, .status-ready { background: #e7f3ff; color: #0b5cad; }
-  .status-completed, .status-scheduled, .status-succeeded { background: #e6f6ec; color: #1a7f45; }
-  .status-planned, .status-backlog { background: #eef1f6; color: #5a6a80; }
-  .status-paused, .status-cancelled, .status-inactive, .status-archived { background: #eef1f6; color: #7a7f87; }
-  .agent-card {
-    display: flex;
-    gap: 0.9rem;
-    align-items: flex-start;
-    border: 1px solid #dbe2ec;
-    border-left: 4px solid #0b5cad;
-    border-radius: 10px;
-    padding: 0.8rem 1rem;
-    margin: 0.6rem 0;
-  }
-  .agent-avatar {
-    width: 40px; height: 40px; border-radius: 50%;
-    background: #0b5cad; color: #fff;
-    display: flex; align-items: center; justify-content: center;
-    font-weight: 700; font-size: 1.1rem; flex: none;
-  }
-  .agent-name { font-weight: 700; }
-  .agent-tasks { margin-top: 0.4rem; }
-  .agent-tasks li { border: none; padding: 0.15rem 0; }
-  .meeting-link { margin-left: 0.5rem; color: #0b5cad; text-decoration: none; font-size: 0.85rem; }
-  footer { text-align: center; color: #8a94a6; font-size: 0.8rem; margin-top: 2rem; }
-  @media (prefers-color-scheme: dark) {
-    body { background: #131a26; color: #e6eaf2; }
-    section.panel { background: #1b2436; border-color: #2a3550; }
-    li, th, td { border-color: #2a3550; }
-    .agent-card { border-color: #2a3550; }
-    .muted, th { color: #8a94a6; }
-    .status-planned, .status-backlog, .status-paused, .status-cancelled, .status-inactive, .status-archived { background: #2a3550; color: #b7c1d4; }
-  }
-</style>
-</head>
-<body>
-<header class="top">
-  <h1>🏛 ${escapeHtml(lab.name)}</h1>
-  <p>PI Dashboard —— 打开即是实验室当前状态，无需任何输入（SPEC-010）</p>
-</header>
-<main>
-  ${error ? `<div class="flash error">⚠ ${escapeHtml(error)}</div>` : ''}
-  ${notice ? `<div class="flash ok">✓ ${escapeHtml(notice)}</div>` : ''}
-  ${onboardingWarning}
 
-  <section class="panel">
-    <h2>⚡ 快速操作</h2>
-    <details>
-      <summary>🤖 雇佣成员</summary>
-      <form class="field" method="post" action="/ui/labs/${escapeHtml(lab.id)}/agents">
-        <input type="hidden" name="_return" value="/labs/${escapeHtml(lab.id)}/dashboard" />
-        <label>姓名</label><input type="text" name="name" required maxlength="200" placeholder="例如：Alice" />
-        <label>角色</label><input type="text" name="role" maxlength="100" placeholder="例如：researcher（默认）" />
-        <label>专长</label><textarea name="specialization" maxlength="2000" placeholder="（可选）例如：NLP、因果推断…"></textarea>
-        <label>模型</label>
-        <select name="modelConfigId">${modelConfigOptions}</select>
-        <div class="actions"><button class="btn" type="submit">雇佣</button></div>
-      </form>
-    </details>
-    <details>
-      <summary>🔌 连接模型</summary>
-      <form class="field" method="post" action="/ui/labs/${escapeHtml(lab.id)}/model-configs">
-        <input type="hidden" name="_return" value="/labs/${escapeHtml(lab.id)}/dashboard" />
-        <label>配置名称</label><input type="text" name="name" required maxlength="100" placeholder="例如：OpenAI GPT-4o" />
-        <label>提供商</label>
-        <select name="provider">
-          <option value="openai_compatible">openai_compatible（OpenAI / Ollama / vLLM / DeepSeek 等）</option>
-          <option value="mock">mock（本地演示，无需网络）</option>
-        </select>
-        <label>模型</label><input type="text" name="model" required maxlength="200" placeholder="例如：gpt-4o-mini" />
-        <label>Base URL</label><input type="url" name="baseUrl" maxlength="500" placeholder="（可选）默认 https://api.openai.com/v1" />
-        <label>API Key</label><input type="password" name="apiKey" maxlength="2000" placeholder="（可选）加密存储，仅用于调用模型" />
-        <div class="actions"><button class="btn" type="submit">保存配置</button></div>
-      </form>
-    </details>
-  </section>
+  window.MiniLabVoice = { speak: speak, toggle: toggle };
+})();
+<\/script>`
+    : '';
 
-  <section class="panel">
-    <h2>🔌 模型配置（${modelConfigs.length}）</h2>
-    ${modelConfigs.length === 0 ? '<p class="muted">还没连接模型。用上面的「连接模型」添加一个；用 mock 即可零成本试玩全流程。</p>' : `<ul>${modelConfigList}</ul>`}
-  </section>
+  const voiceCss = `
+  .voice-actions { align-items: center; }
+  .voice-status { font-size: 0.85rem; }
+  .voice-status.voice-err { color: var(--danger); }
+  #voiceAudio { width: 100%; margin-top: 0.6rem; }
+`;
 
-  <section class="panel">
-    <h2>📁 进行中的项目（${dashboard.projects.length}）</h2>
-    ${dashboard.projects.length === 0 ? '<p class="muted">暂无进行中的项目。</p>' : `<table>
-      <thead><tr><th>项目</th><th>阶段</th><th>状态</th><th>更新于</th></tr></thead>
-      <tbody>${projectRows}</tbody>
-    </table>`}
-  </section>
+  const body = `
+    <div class="hero">
+      <h1>🏛 ${escapeHtml(lab.name)}</h1>
+      <p>PI Dashboard —— 打开即是实验室当前状态，无需任何输入（SPEC-010）</p>
+    </div>
 
-  <section class="panel">
-    <h2>🤖 成员（${dashboard.agents.length}）—— 持久身份，非临时对话参与者</h2>
-    ${dashboard.agents.length === 0 ? '<p class="muted">还没有成员。用 POST /labs/:labId/agents 雇佣第一位 Agent。</p>' : agentCards}
-  </section>
+    <div class="stats">${statCards}</div>
 
-  <section class="panel">
-    <h2>⚠️ 需要关注的任务（${dashboard.attentionTasks.length}）</h2>
-    <ul>${attentionList}</ul>
-  </section>
+    ${onboardingWarning}
 
-  <section class="panel">
-    <h2>❓ 等待你的问题（${dashboard.questionsForPi.length}）</h2>
-    <ul>${questionList}</ul>
-  </section>
+    <section class="panel">
+      <h2>⚡ 快速操作</h2>
+      <details>
+        <summary>🤖 雇佣成员</summary>
+        <form class="field" method="post" action="/ui/labs/${escapeHtml(lab.id)}/agents">
+          <input type="hidden" name="_return" value="/labs/${escapeHtml(lab.id)}/dashboard" />
+          <label>姓名</label><input type="text" name="name" required maxlength="200" placeholder="例如：Alice" />
+          <label>角色</label><input type="text" name="role" maxlength="100" placeholder="例如：researcher（默认）" />
+          <label>专长</label><textarea name="specialization" maxlength="2000" placeholder="（可选）例如：NLP、因果推断…"></textarea>
+          <label>模型</label>
+          <select name="modelConfigId">${modelConfigOptions}</select>
+          <div class="actions"><button class="btn" type="submit">雇佣</button></div>
+        </form>
+      </details>
+      <details>
+        <summary>🔌 连接模型</summary>
+        <form class="field" method="post" action="/ui/labs/${escapeHtml(lab.id)}/model-configs">
+          <input type="hidden" name="_return" value="/labs/${escapeHtml(lab.id)}/dashboard" />
+          <label>配置名称</label><input type="text" name="name" required maxlength="100" placeholder="例如：OpenAI GPT-4o" />
+          <label>提供商</label>
+          <select name="provider">
+            <option value="openai_compatible">openai_compatible（OpenAI / Ollama / vLLM / DeepSeek 等）</option>
+            <option value="mock">mock（本地演示，无需网络）</option>
+          </select>
+          <label>模型</label><input type="text" name="model" required maxlength="200" placeholder="例如：gpt-4o-mini" />
+          <label>Base URL</label><input type="url" name="baseUrl" maxlength="500" placeholder="（可选）默认 https://api.openai.com/v1" />
+          <label>API Key</label><input type="password" name="apiKey" maxlength="2000" placeholder="（可选）加密存储，仅用于调用模型" />
+          <div class="actions"><button class="btn" type="submit">保存配置</button></div>
+        </form>
+      </details>
+    </section>
 
-  <section class="panel">
-    <h2>📦 最近产物（${dashboard.recentArtifacts.length}）</h2>
-    <ul>${artifactList}</ul>
-  </section>
+    ${voicePanel}
 
-  <section class="panel">
-    <h2>🧭 最近决策（${dashboard.recentDecisions.length}）</h2>
-    <ul>${decisionList}</ul>
-  </section>
+    <section class="panel">
+      <h2>🔌 模型配置（${modelConfigs.length}）</h2>
+      ${modelConfigs.length === 0 ? '<p class="muted">还没连接模型。用上面的「连接模型」添加一个；用 mock 即可零成本试玩全流程。</p>' : `<ul>${modelConfigList}</ul>`}
+    </section>
 
-  <section class="panel">
-    <h2>🗓 组会入口（${dashboard.meetings.length}）</h2>
-    <ul>${meetingList}</ul>
-  </section>
+    <section class="panel">
+      <h2>📁 进行中的项目（${dashboard.projects.length}）</h2>
+      ${dashboard.projects.length === 0 ? '<p class="muted">暂无进行中的项目。</p>' : `<table>
+        <thead><tr><th>项目</th><th>阶段</th><th>状态</th><th>更新于</th></tr></thead>
+        <tbody>${projectRows}</tbody>
+      </table>`}
+    </section>
 
-  <footer>
-    本页由持久化领域状态确定性生成（不经过任何模型调用）· ${escapeHtml(lab.name)} · MiniLab SPEC-010
-  </footer>
-</main>
-</body>
-</html>`;
+    <section class="panel">
+      <h2>🤖 成员（${dashboard.agents.length}）—— 持久身份，非临时对话参与者</h2>
+      ${dashboard.agents.length === 0 ? '<p class="muted">还没有成员。用 POST /labs/:labId/agents 雇佣第一位 Agent。</p>' : agentCards}
+    </section>
+
+    <section class="panel">
+      <h2>⚠️ 需要关注的任务（${dashboard.attentionTasks.length}）</h2>
+      <ul>${attentionList}</ul>
+    </section>
+
+    <section class="panel">
+      <h2>❓ 等待你的问题（${dashboard.questionsForPi.length}）</h2>
+      <ul>${questionList}</ul>
+    </section>
+
+    <section class="panel">
+      <h2>📦 最近产物（${dashboard.recentArtifacts.length}）</h2>
+      <ul>${artifactList}</ul>
+    </section>
+
+    <section class="panel">
+      <h2>🧭 最近决策（${dashboard.recentDecisions.length}）</h2>
+      <ul>${decisionList}</ul>
+    </section>
+
+    <section class="panel">
+      <h2>🗓 组会入口（${dashboard.meetings.length}）</h2>
+      <ul>${meetingList}</ul>
+    </section>
+  `;
+
+  return appFrame({
+    crumb: 'PI Dashboard',
+    docTitle: `${lab.name} · PI Dashboard`,
+    labName: lab.name,
+    path: `/labs/${lab.id}/dashboard`,
+    error,
+    notice,
+    theme: extra?.theme,
+    extraCss: voiceCss,
+    extraBody: voiceScript,
+    body,
+    tagline: `本页由持久化领域状态确定性生成（不经过任何模型调用）· ${lab.name}`,
+  });
 }

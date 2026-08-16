@@ -63,6 +63,8 @@ export interface DashboardProject {
   title: string;
   stage: ResearchStage;
   status: ProjectStatus;
+  /** 0–100, derived from completed / non-cancelled tasks in the project. */
+  progress: number;
   updatedAt: string;
 }
 
@@ -135,6 +137,7 @@ export interface DashboardMeeting {
   status: MeetingStatus;
   projectId: string;
   projectTitle: string;
+  startedAt: string | null;
   updatedAt: string;
 }
 
@@ -187,19 +190,26 @@ export class DashboardService {
     return {
       lab: { id: lab.id, name: lab.name, description: lab.description },
 
-      // Active Projects with stage/status (required section 1).
+      // Active Projects with stage/status (required section 1) + a task-derived
+      // progress bar (Lab Pulse: % of non-cancelled tasks completed).
       projects: projects
         .filter(
           (p) => p.status !== 'completed' && p.status !== ARCHIVED_PROJECT_STATUS,
         )
         .sort(byUpdatedAtDesc)
-        .map((p) => ({
-          id: p.id,
-          title: p.title,
-          stage: p.stage,
-          status: p.status,
-          updatedAt: p.updatedAt,
-        })),
+        .map((p) => {
+          const projectTasks = tasks.filter((t) => t.projectId === p.id);
+          const active = projectTasks.filter((t) => t.status !== 'cancelled');
+          const done = active.filter((t) => t.status === 'completed').length;
+          return {
+            id: p.id,
+            title: p.title,
+            stage: p.stage,
+            status: p.status,
+            progress: active.length === 0 ? 0 : Math.round((done / active.length) * 100),
+            updatedAt: p.updatedAt,
+          };
+        }),
 
       // Agent roster with current assignment/status (required section 2).
       agents: agents.map((agent) =>
@@ -268,6 +278,7 @@ export class DashboardService {
           status: m.status,
           projectId: m.projectId,
           projectTitle: projectTitle(m.projectId),
+          startedAt: m.startedAt,
           updatedAt: m.updatedAt,
         })),
     };

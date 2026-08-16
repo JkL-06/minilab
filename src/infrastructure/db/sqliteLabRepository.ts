@@ -65,4 +65,11 @@ export class SqliteLabRepository implements LabRepository {
       .prepare('UPDATE labs SET name = @name, description = @description, updated_at = @updated_at WHERE id = @id')
       .run(row);
   }
+
+  reassignOwner(fromOwnerUserId: string, toOwnerUserId: string): number {
+    const result = this.db
+      .prepare('UPDATE labs SET owner_user_id = ? WHERE owner_user_id = ?')
+      .run(toOwnerUserId, fromOwnerUserId);
+    return result.changes;
+  }
 }

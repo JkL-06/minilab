@@ -1,6 +1,7 @@
 node_modules/
 dist/
 dist-exe/
+release/
 data/
 *.db
 *.db-journal
@@ -18,3 +19,6 @@ website/preview.html
 Thumbs.db
 # 发布/生成用的临时目录（可能含明文 API key 的请求体快照）——绝不提交
 .release_tmp/
+
+# 一次性打包辅助工具（第三方二进制，不入库）
+scripts/rcedit-x64.exe

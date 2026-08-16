@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import request from 'supertest';
+import { testAuthDeps } from '../support/testAuth';
 
 import { createApp } from '../../src/api/app';
 import { AgentService } from '../../src/application/agentService';
@@ -86,6 +87,7 @@ function testApp() {
     artifactService,
     meetingService,
     dashboardService,
+    ...testAuthDeps(),
   });
   return { app };
 }
@@ -108,13 +110,22 @@ test('desktop CSRF guard rejects cross-site state changes but allows same-origin
   });
 
   const { app } = testApp();
+  // 建立 cookie 会话身份，使「带会话的跨站请求」可被真实模拟
+  const setup = await request(app)
+    .post('/setup')
+    .set('Accept', BROWSER)
+    .type('form')
+    .send({ username: 'jkl', password: 'secret123', passwordConfirm: 'secret123' });
+  assert.equal(setup.status, 302);
+  const cookie = String(setup.headers['set-cookie']).split(';')[0];
 
-  await t.test('cross-origin POST (Origin mismatch) is rejected with 403', async () => {
+  await t.test('cross-origin POST (Origin mismatch) is rejected with 403 even with a valid session', async () => {
     const res = await request(app)
       .post('/labs')
       .set('Accept', BROWSER)
       .set('Host', 'localhost')
       .set('Origin', 'https://evil.example')
+      .set('Cookie', cookie)
       .send({ name: 'evil' });
     assert.equal(res.status, 403);
     assert.equal(res.body.error.code, 'FORBIDDEN');
@@ -126,17 +137,19 @@ test('desktop CSRF guard rejects cross-site state changes but allows same-origin
       .set('Accept', BROWSER)
       .set('Host', 'localhost')
       .set('Referer', 'https://evil.example/form')
+      .set('Cookie', cookie)
       .send({ name: 'evil' });
     assert.equal(res.status, 403);
     assert.equal(res.body.error.code, 'FORBIDDEN');
   });
 
-  await t.test('same-origin POST passes the guard and is served as local-pi', async () => {
+  await t.test('same-origin POST passes the guard and is served under the session user', async () => {
     const res = await request(app)
       .post('/labs')
       .set('Accept', BROWSER)
       .set('Host', 'localhost')
       .set('Origin', 'http://localhost')
+      .set('Cookie', cookie)
       .send({ name: 'Local Lab' });
     assert.equal(res.status, 201);
     assert.equal(res.body.lab.name, 'Local Lab');
@@ -163,15 +176,23 @@ test('desktop CSRF guard is a no-op outside desktop mode', async () => {
   delete process.env.MINILAB_DESKTOP;
   const { app } = testApp();
   try {
-    // Guard skipped → requireUser rejects the headerless request with 401.
-    const res = await request(app)
+    // Guard skipped → 浏览器导航被 requireUser 302 到登录页（而非 401）
+    const browser = await request(app)
       .post('/labs')
       .set('Accept', BROWSER)
       .set('Host', 'localhost')
       .set('Origin', 'https://evil.example')
       .send({ name: 'x' });
-    assert.equal(res.status, 401);
-    assert.equal(res.body.error.code, 'UNAUTHENTICATED');
+    assert.equal(browser.status, 302);
+    assert.match(String(browser.headers.location), /^\/auth\/login/);
+    // JSON/API 客户端无凭据 → 401 UNAUTHENTICATED（SPEC-001 契约不变）
+    const json = await request(app)
+      .post('/labs')
+      .set('Accept', 'application/json')
+      .set('Origin', 'https://evil.example')
+      .send({ name: 'x' });
+    assert.equal(json.status, 401);
+    assert.equal(json.body.error.code, 'UNAUTHENTICATED');
   } finally {
     if (previous !== undefined) process.env.MINILAB_DESKTOP = previous;
   }

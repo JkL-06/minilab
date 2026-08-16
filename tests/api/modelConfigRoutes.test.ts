@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import request from 'supertest';
+import { testAuthDeps } from '../support/testAuth';
 
 import { createApp } from '../../src/api/app';
 import { AgentService } from '../../src/application/agentService';
@@ -47,6 +48,7 @@ function testApp() {
     artifactService,
     meetingService,
     dashboardService,
+    ...testAuthDeps(),
   });
   return { app, infra, labService };
 }

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MiniLab · 下载与安装 | 你的持久化 AI 科研实验室</title>
 <meta name="description" content="MiniLab 是一个开源、自托管的持久化 AI 科研实验室。下载即用：雇佣持久的 AI 研究员、用任务与记忆推进研究、打开网页即是 PI 仪表盘。本地 SQLite 存储，重启不丢，无需外网即可完整试用。">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20512%20512%22%3E%3Crect%20x%3D%2231%22%20y%3D%2231%22%20width%3D%22450%22%20height%3D%22450%22%20rx%3D%22112%22%20fill%3D%22%234F46E5%22%2F%3E%3Cpath%20d%3D%22M154%20113%20H358%20V348%20Q358%20369%20337%20369%20H175%20Q154%20369%20154%20348%20Z%22%20fill%3D%22%23ffffff%22%2F%3E%3Cpath%20d%3D%22M166%20266%20H346%20V341%20Q346%20362%20325%20362%20H187%20Q166%20362%20166%20341%20Z%22%20fill%3D%22%2338BDF8%22%2F%3E%3Crect%20x%3D%22162%22%20y%3D%22258%22%20width%3D%22188%22%20height%3D%229%22%20rx%3D%224%22%20fill%3D%22%23ffffff%22%2F%3E%3Ccircle%20cx%3D%22215%22%20cy%3D%22230%22%20r%3D%2211%22%20fill%3D%22%23ffffff%22%2F%3E%3Ccircle%20cx%3D%22256%22%20cy%3D%22200%22%20r%3D%228%22%20fill%3D%22%23ffffff%22%2F%3E%3Ccircle%20cx%3D%22297%22%20cy%3D%22230%22%20r%3D%229%22%20fill%3D%22%23ffffff%22%2F%3E%3C%2Fsvg%3E">
 <style>
   :root {
     --bg: #0b1120;
@@ -56,11 +57,10 @@
   .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; color: var(--text); }
   .brand:hover { text-decoration: none; }
   .brand-mark {
-    width: 30px; height: 30px; border-radius: 9px;
-    display: grid; place-items: center; font-size: 17px;
-    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    width: 30px; height: 30px; border-radius: 9px; display: block;
     box-shadow: 0 4px 18px rgba(95,139,255,.35);
   }
+  .brand-mark svg { width: 100%; height: 100%; display: block; border-radius: 9px; }
   .nav-links { display: flex; gap: 22px; margin-left: 8px; }
   .nav-links a { color: var(--muted); font-size: 14.5px; }
   .nav-links a:hover { color: var(--text); }
@@ -247,6 +247,8 @@
   /* ---------- Footer ---------- */
   footer { border-top: 1px solid var(--border-soft); padding: 44px 0 56px; }
   .foot-inner { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; color: var(--faint); font-size: 13.5px; }
+  .foot-brand { display: inline-flex; align-items: center; gap: 8px; }
+  .foot-brand svg { width: 22px; height: 22px; border-radius: 6px; }
   .foot-inner .spacer { margin-left: auto; display: flex; gap: 18px; }
   .foot-inner a { color: var(--faint); }
   .foot-inner a:hover { color: var(--accent); }
@@ -276,7 +278,7 @@
 
 <nav>
   <div class="nav-inner">
-    <a class="brand" href="#top"><span class="brand-mark">🧪</span> MiniLab</a>
+    <a class="brand" href="#top"><span class="brand-mark"><svg viewBox="0 0 512 512" role="img" aria-label="MiniLab"><defs><linearGradient id="mlg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4F46E5"/><stop offset="1" stop-color="#06B6D4"/></linearGradient></defs><rect x="31" y="31" width="450" height="450" rx="112" fill="url(#mlg)"/><path d="M154 113 H358 V348 Q358 369 337 369 H175 Q154 369 154 348 Z" fill="#ffffff"/><path d="M166 266 H346 V341 Q346 362 325 362 H187 Q166 362 166 341 Z" fill="#38BDF8"/><rect x="162" y="258" width="188" height="9" rx="4" fill="#ffffff"/><circle cx="215" cy="230" r="11" fill="#ffffff"/><circle cx="256" cy="200" r="8" fill="#ffffff"/><circle cx="297" cy="230" r="9" fill="#ffffff"/></svg></span> MiniLab</a>
     <div class="nav-links">
       <a href="#features">特性</a>
       <a href="#dashboard">界面</a>
@@ -291,7 +293,7 @@
 <header class="hero" id="top">
   <div class="wrap hero-grid">
     <div>
-      <span class="badge"><span class="dot"></span> v0.2.1 · 已发布 Windows 桌面版 · npm · 下载网站 · 383 项测试通过</span>
+      <span class="badge"><span class="dot"></span> v0.3.0 · 已发布 Windows 桌面版 · npm · 下载网站 · 434 项测试通过</span>
       <h1>你的<a class="grad">持久化 AI 科研实验室</a></h1>
       <p class="hero-sub">
         MiniLab 是一个开源、自托管的 AI 科研实验室。雇佣持久的 AI 研究员
@@ -311,7 +313,7 @@
         </div>
         <div class="term-body">
           <div class="term-line"><span class="p">$</span><span class="c" id="install-cmd">npx minilab</span></div>
-          <div class="term-line"><span class="out">✔ 正在下载 minilab@0.2.1 · 无需手动安装</span></div>
+          <div class="term-line"><span class="out">✔ 正在下载 minilab@0.3.0 · 无需手动安装</span></div>
           <div class="term-line"><span class="out">➜ MiniLab 已启动：http://localhost:3000</span></div>
           <div class="term-line dim">打开浏览器即进入 PI 仪表盘 🏛</div>
         </div>
@@ -535,7 +537,7 @@
           <div>
             <h3>下载 Windows 桌面版</h3>
             <p>单文件、免安装：已内置 Node.js 运行时与 SQLite，无需任何依赖，支持 Windows 10 / 11。</p>
-            <a class="btn btn-primary" id="exe-download-tab" href="#install">⬇ 下载 MiniLab.exe (v0.2.1 · 约 59 MB)</a>
+            <a class="btn btn-primary" id="exe-download-tab" href="#install">⬇ 下载 MiniLab.exe (v0.3.0 · 约 59 MB)</a>
           </div>
         </div>
         <div class="step">
@@ -620,7 +622,7 @@
           <div>
             <h3>下载 ZIP 压缩包</h3>
             <p>点击下方按钮，下载 MiniLab 源码压缩包。</p>
-            <a class="btn btn-primary" href="#install" data-cta="download" id="zip-download">⬇ 下载 MiniLab (v0.2.1)</a>
+            <a class="btn btn-primary" href="#install" data-cta="download" id="zip-download">⬇ 下载 MiniLab (v0.3.0)</a>
           </div>
         </div>
         <div class="step">
@@ -652,7 +654,7 @@
           <div>
             <h3>下载并解压 MiniLab</h3>
             <p>点击下载 ZIP，解压到任意目录。</p>
-            <a class="btn btn-primary" href="#install" data-cta="download" id="zip-download-win">⬇ 下载 MiniLab (v0.2.1)</a>
+            <a class="btn btn-primary" href="#install" data-cta="download" id="zip-download-win">⬇ 下载 MiniLab (v0.3.0)</a>
           </div>
         </div>
         <div class="step">
@@ -733,7 +735,7 @@
 
 <footer>
   <div class="wrap foot-inner">
-    <span>🧪 MiniLab · 自托管开源 AI 科研实验室 · <span id="foot-version">v0.2.1</span></span>
+    <span class="foot-brand"><svg viewBox="0 0 512 512" role="img" aria-label="MiniLab"><defs><linearGradient id="mlg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4F46E5"/><stop offset="1" stop-color="#06B6D4"/></linearGradient></defs><rect x="31" y="31" width="450" height="450" rx="112" fill="url(#mlg2)"/><path d="M154 113 H358 V348 Q358 369 337 369 H175 Q154 369 154 348 Z" fill="#ffffff"/><path d="M166 266 H346 V341 Q346 362 325 362 H187 Q166 362 166 341 Z" fill="#38BDF8"/><rect x="162" y="258" width="188" height="9" rx="4" fill="#ffffff"/><circle cx="215" cy="230" r="11" fill="#ffffff"/><circle cx="256" cy="200" r="8" fill="#ffffff"/><circle cx="297" cy="230" r="9" fill="#ffffff"/></svg> MiniLab · 自托管开源 AI 科研实验室 · <span id="foot-version">v0.3.0</span></span>
     <span class="spacer">
       <a href="#features">特性</a>
       <a href="#install">安装</a>
@@ -754,11 +756,11 @@
  *   exeUrl  : Windows 桌面版下载地址（GitHub Release 资产直链）
  * ============================================================ */
 const CONFIG = {
-  version: 'v0.2.1',
+  version: 'v0.3.0',
   repoUrl: 'https://github.com/JkL-06/minilab',
   zipUrl: 'https://github.com/JkL-06/minilab/archive/refs/heads/main.zip',
   npmUrl: 'https://www.npmjs.com/package/minilab',
-  exeUrl: 'https://github.com/JkL-06/minilab/releases/download/v0.2.1/MiniLab.exe',
+  exeUrl: 'https://github.com/JkL-06/minilab/releases/download/v0.3.0/MiniLab.exe',
 };
 
 /* ---- 把配置写进页面 ---- */
